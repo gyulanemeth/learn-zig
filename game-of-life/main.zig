@@ -1,11 +1,8 @@
 const std = @import("std");
 
-const state_path = "./state.txt";
+fn loadState(state_matrix: *[10][10]u8, next_state_matrix: *[10][10]u8) !void {
+    const state_path = "./state.txt";
 
-var state: [10][10]u8 = undefined;
-var next_state: [10][10]u8 = undefined;
-
-fn loadState() !void {
     var state_file = try std.fs.cwd().openFile(state_path, .{});
     defer state_file.close();
 
@@ -19,15 +16,15 @@ fn loadState() !void {
         std.debug.print("file line read {s}\n", .{line});
 
         for (line) |char, idx| {
-            state[line_num][idx] = char - 48; // 0 in ascii is 48
-            next_state[line_num][idx] = 0;
+            state_matrix[line_num][idx] = char - 48; // 0 in ascii is 48
+            next_state_matrix[line_num][idx] = 0;
         }
     }
 }
 
 fn saveState() !void {}
 
-fn cellValue(r_idx: i32, c_idx: i32) u8 {
+fn cellValue(state_matrix: *[10][10]u8, r_idx: i32, c_idx: i32) u8 {
     var real_r_idx = r_idx;
     var real_c_idx = c_idx;
 
@@ -42,42 +39,36 @@ fn cellValue(r_idx: i32, c_idx: i32) u8 {
     real_r_idx = @mod(real_r_idx, 10);
     real_c_idx = @mod(real_c_idx, 10);
 
-    return state[@intCast(u32, real_r_idx)][@intCast(u32, real_c_idx)];
+    return state_matrix[@intCast(u32, real_r_idx)][@intCast(u32, real_c_idx)];
 }
 
-fn countNeighboursAlive(r_idx: i32, c_idx: i32) u8 {
+fn countNeighboursAlive(state_matrix: *[10][10]u8, r_idx: i32, c_idx: i32) u8 {
     var neighbors_alive: u8 = 0;
 
-    neighbors_alive += cellValue(r_idx - 1, c_idx - 1);
-    neighbors_alive += cellValue(r_idx - 1, c_idx);
-    neighbors_alive += cellValue(r_idx - 1, c_idx + 1);
-    neighbors_alive += cellValue(r_idx, c_idx - 1);
-    neighbors_alive += cellValue(r_idx, c_idx + 1);
-    neighbors_alive += cellValue(r_idx + 1, c_idx - 1);
-    neighbors_alive += cellValue(r_idx + 1, c_idx);
-    neighbors_alive += cellValue(r_idx + 1, c_idx + 1);
+    neighbors_alive += cellValue(state_matrix, r_idx - 1, c_idx - 1);
+    neighbors_alive += cellValue(state_matrix, r_idx - 1, c_idx);
+    neighbors_alive += cellValue(state_matrix, r_idx - 1, c_idx + 1);
+    neighbors_alive += cellValue(state_matrix, r_idx, c_idx - 1);
+    neighbors_alive += cellValue(state_matrix, r_idx, c_idx + 1);
+    neighbors_alive += cellValue(state_matrix, r_idx + 1, c_idx - 1);
+    neighbors_alive += cellValue(state_matrix, r_idx + 1, c_idx);
+    neighbors_alive += cellValue(state_matrix, r_idx + 1, c_idx + 1);
 
     return neighbors_alive;
 }
 
-fn nextState() void {
-    for (state) |row, r_idx| {
+fn nextState(state_matrix: *[10][10]u8, next_state_matrix: *[10][10]u8) void {
+    for (state_matrix) |row, r_idx| {
         for (row) |cell, c_idx| {
-            const neighbors_alive = countNeighboursAlive(@intCast(i32, r_idx), @intCast(i32, c_idx));
+            const neighbors_alive = countNeighboursAlive(state_matrix, @intCast(i32, r_idx), @intCast(i32, c_idx));
 
             if (cell == 1 and neighbors_alive > 1 and neighbors_alive < 4) {
-                next_state[r_idx][c_idx] = 1;
+                next_state_matrix[r_idx][c_idx] = 1;
             } else if (cell == 0 and neighbors_alive == 3) {
-                next_state[r_idx][c_idx] = 1;
+                next_state_matrix[r_idx][c_idx] = 1;
             } else {
-                next_state[r_idx][c_idx] = 0;
+                next_state_matrix[r_idx][c_idx] = 0;
             }
-        }
-    }
-
-    for (next_state) |row, r_idx| {
-        for (row) |cell, c_idx| {
-            state[r_idx][c_idx] = cell;
         }
     }
 }
@@ -87,9 +78,9 @@ fn printStateMatrix(message: []const u8, state_matrix: [10][10]u8) void {
     for (state_matrix) |row| {
         for (row) |cell| {
             if (cell == 0) {
-                std.debug.print(" ", .{});
+                std.debug.print("_", .{});
             } else {
-                std.debug.print("*", .{});
+                std.debug.print("•", .{});
             }
         }
         std.debug.print("\n", .{});
@@ -97,7 +88,13 @@ fn printStateMatrix(message: []const u8, state_matrix: [10][10]u8) void {
 }
 
 pub fn main() !void {
-    try loadState();
+    var state1: [10][10]u8 = undefined;
+    var state2: [10][10]u8 = undefined;
+
+    try loadState(&state1, &state2);
+
+    var state = state1;
+    var next_state = state2;
 
     printStateMatrix("state matrix:", state);
 
@@ -105,7 +102,11 @@ pub fn main() !void {
     while (x > 0) : (x -= 1) {
         std.time.sleep(0.3 * std.time.ns_per_s);
 
-        nextState();
+        nextState(&state, &next_state);
+
+        var tmp = state;
+        state = next_state;
+        next_state = tmp;
 
         printStateMatrix("state matrix:", state);
     }
