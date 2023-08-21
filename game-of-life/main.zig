@@ -1,6 +1,6 @@
 const std = @import("std");
 
-fn loadState(state_matrix: *[100]u8, next_state_matrix: *[100]u8) !void {
+fn loadState(state_matrix: []u8, next_state_matrix: []u8) !void {
     const state_path = "./state.txt";
 
     var state_file = try std.fs.cwd().openFile(state_path, .{});
@@ -24,7 +24,7 @@ fn loadState(state_matrix: *[100]u8, next_state_matrix: *[100]u8) !void {
 
 fn saveState() !void {}
 
-fn getCellValue(state_matrix: *[100]u8, r_idx: i32, c_idx: i32) u8 {
+fn getCellValue(state_matrix: []u8, r_idx: i32, c_idx: i32) u8 {
     var real_r_idx = r_idx;
     var real_c_idx = c_idx;
 
@@ -42,11 +42,11 @@ fn getCellValue(state_matrix: *[100]u8, r_idx: i32, c_idx: i32) u8 {
     return state_matrix[@intCast(u32, real_r_idx * 10 + real_c_idx)];
 }
 
-fn setCellValue(state_matrix: *[100]u8, r_idx: usize, c_idx: usize, value: u8) void {
+fn setCellValue(state_matrix: []u8, r_idx: usize, c_idx: usize, value: u8) void {
     state_matrix[r_idx * 10 + c_idx] = value;
 }
 
-fn countNeighboursAlive(state_matrix: *[100]u8, r_idx: i32, c_idx: i32) u8 {
+fn countNeighboursAlive(state_matrix: []u8, r_idx: i32, c_idx: i32) u8 {
     var neighbors_alive: u8 = 0;
 
     neighbors_alive += getCellValue(state_matrix, r_idx - 1, c_idx - 1);
@@ -61,7 +61,7 @@ fn countNeighboursAlive(state_matrix: *[100]u8, r_idx: i32, c_idx: i32) u8 {
     return neighbors_alive;
 }
 
-fn nextState(state_matrix: *[100]u8, next_state_matrix: *[100]u8) void {
+fn nextState(state_matrix: []u8, next_state_matrix: []u8) void {
     for (state_matrix) |cell, idx| {
         const r_idx: usize = idx / 10;
         const c_idx: usize = @mod(idx, 10);
@@ -77,7 +77,7 @@ fn nextState(state_matrix: *[100]u8, next_state_matrix: *[100]u8) void {
     }
 }
 
-fn printStateMatrix(message: []const u8, state_matrix: [100]u8) void {
+fn printStateMatrix(message: []const u8, state_matrix: []u8) void {
     std.debug.print("\n\n{s}", .{message});
     for (state_matrix) |cell, idx| {
         if (idx % 10 == 0) {
@@ -93,13 +93,17 @@ fn printStateMatrix(message: []const u8, state_matrix: [100]u8) void {
 }
 
 pub fn main() !void {
-    var state1: [100]u8 = undefined;
-    var state2: [100]u8 = undefined;
+    const allocator = std.heap.page_allocator;
+    var memory = try allocator.alloc(u8, 200);
+    defer allocator.free(memory);
 
-    try loadState(&state1, &state2);
+    var state1: []u8 = memory[0..100];
+    var state2: []u8 = memory[100..memory.len];
 
-    var state = state1;
-    var next_state = state2;
+    try loadState(state1, state2);
+
+    var state: []u8 = state1;
+    var next_state: []u8 = state2;
 
     printStateMatrix("state matrix:", state);
 
@@ -107,7 +111,7 @@ pub fn main() !void {
     while (x > 0) : (x -= 1) {
         std.time.sleep(0.3 * std.time.ns_per_s);
 
-        nextState(&state, &next_state);
+        nextState(state, next_state);
 
         var tmp = state;
         state = next_state;
