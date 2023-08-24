@@ -35,7 +35,7 @@ fn loadState(allocator: std.mem.Allocator) !GameState {
     while (try in_stream.readUntilDelimiterOrEof(&buffer, '\n')) |line| : (line_num += 1) {
         std.debug.print("file line read {s}\n", .{line});
 
-        for (line) |char, idx| {
+        for (line, 0..) |char, idx| {
             memory[line_num * n_cols + idx] = char - 48;
         }
     }
@@ -50,17 +50,17 @@ fn getCellValue(game_state: GameState, r_idx: i32, c_idx: i32) u8 {
     var real_c_idx = c_idx;
 
     if (real_r_idx < 0) {
-        real_r_idx += @intCast(i32, game_state.n_rows);
+        real_r_idx += @as(i32, @intCast(game_state.n_rows));
     }
 
     if (real_c_idx < 0) {
-        real_c_idx += @intCast(i32, game_state.n_cols);
+        real_c_idx += @as(i32, @intCast(game_state.n_cols));
     }
 
-    real_r_idx = @mod(real_r_idx, @intCast(i32, game_state.n_rows));
-    real_c_idx = @mod(real_c_idx, @intCast(i32, game_state.n_cols));
+    real_r_idx = @mod(real_r_idx, @as(i32, @intCast(game_state.n_rows)));
+    real_c_idx = @mod(real_c_idx, @as(i32, @intCast(game_state.n_cols)));
 
-    return game_state.state_matrix[@intCast(u32, real_r_idx * @intCast(i32, game_state.n_cols) + real_c_idx)];
+    return game_state.state_matrix[@as(u32, @intCast(real_r_idx * @as(i32, @intCast(game_state.n_cols)) + real_c_idx))];
 }
 
 fn setCellValue(game_state: GameState, r_idx: usize, c_idx: usize, value: u8) void {
@@ -83,10 +83,10 @@ fn countNeighboursAlive(game_state: GameState, r_idx: i32, c_idx: i32) u8 {
 }
 
 fn calcNextState(current_game_state: GameState, next_game_state: GameState) void {
-    for (current_game_state.state_matrix) |cell, idx| {
+    for (current_game_state.state_matrix, 0..) |cell, idx| {
         const r_idx: usize = idx / current_game_state.n_cols;
         const c_idx: usize = @mod(idx, current_game_state.n_cols);
-        const neighbors_alive = countNeighboursAlive(current_game_state, @intCast(i32, r_idx), @intCast(i32, c_idx));
+        const neighbors_alive = countNeighboursAlive(current_game_state, @as(i32, @intCast(r_idx)), @as(i32, @intCast(c_idx)));
 
         if (cell == 1 and neighbors_alive > 1 and neighbors_alive < 4) {
             setCellValue(next_game_state, r_idx, c_idx, 1);
@@ -100,7 +100,7 @@ fn calcNextState(current_game_state: GameState, next_game_state: GameState) void
 
 fn printStateMatrix(message: []const u8, game_state: GameState) void {
     std.debug.print("\n\n{s}", .{message});
-    for (game_state.state_matrix) |cell, idx| {
+    for (game_state.state_matrix, 0..) |cell, idx| {
         if (idx % game_state.n_cols == 0) {
             std.debug.print("\n", .{});
         }
