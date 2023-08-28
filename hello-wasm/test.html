@@ -3,13 +3,22 @@
     <body>
         <div>yo</div>
         <script>
-            const importObject = { add: (a) => a + 1 }
-            fetch("http://localhost:9080/libmain.wasm")
+            const importObject = { env: { inc: (a) => a + 1 } }
+            /*
+            fetch("./main.wasm")
                 .then((response) => response.arrayBuffer())
                 .then((bytes) => WebAssembly.instantiate(bytes, importObject))
                 .then((results) => {
                     // Do something with the results!
-                });
+                    console.log(results.instance.exports.addInc(2, 3))
+                })
+            //*/
+
+            //*
+            WebAssembly.instantiateStreaming(fetch("./main.wasm"), importObject).then((results) => {
+                console.log(results.instance.exports.addInc(2, 3))
+            })
+            //*/
         </script>
     </body>
 </html>
