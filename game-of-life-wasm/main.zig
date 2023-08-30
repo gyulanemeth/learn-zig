@@ -1,6 +1,6 @@
 const std = @import("std");
 
-extern fn drawCell(x: i32, y: i32, value: u8) void;
+extern fn drawCell(r_idx: i32, c_idx: i32, value: u8) void;
 
 const GameState = struct { n_rows: u32, n_cols: u32, state_matrix: []u8 };
 
@@ -11,9 +11,9 @@ var game_state_2: GameState = undefined;
 var current_game_state: GameState = undefined;
 var next_game_state: GameState = undefined;
 
-pub fn init(n_rows: u32, n_cols: u32) error{OutOfMemory}!void {
+export fn init(n_rows: u32, n_cols: u32) void {
     const memory_size = n_rows * n_cols * 2;
-    var memory = try std.heap.page_allocator.alloc(u8, memory_size);
+    var memory = std.heap.page_allocator.alloc(u8, memory_size) catch unreachable;
     for(0..memory_size) |idx| {
         memory[idx] = 0;
     }
@@ -47,6 +47,7 @@ fn getCellValue(r_idx: i32, c_idx: i32) u8 {
 
 export fn setCellValue(r_idx: usize, c_idx: usize, value: u8) void {
     current_game_state.state_matrix[r_idx * current_game_state.n_cols + c_idx] = value;
+    drawCell(@as(i32, @intCast(r_idx)), @as(i32, @intCast(c_idx)), value);
 }
 
 fn setNextCellValue(r_idx: usize, c_idx: usize, value: u8) void {

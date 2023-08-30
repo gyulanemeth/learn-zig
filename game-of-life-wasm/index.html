@@ -1,24 +1,56 @@
 <html>
-    <head></head>
+    <head>
+        <style>
+            td {
+                width: 50px;
+                height: 50px;
+                border: 1px dotted gray;
+            }
+        </style>
+    </head>
     <body>
-        <div>yo</div>
+        <div id="game"></div>
+        <button id="next-state">Next State</button>
         <script>
-            const importObject = { env: { inc: (a) => a + 1 } }
-            /*
-            fetch("./main.wasm")
-                .then((response) => response.arrayBuffer())
-                .then((bytes) => WebAssembly.instantiate(bytes, importObject))
-                .then((results) => {
-                    // Do something with the results!
-                    console.log(results.instance.exports.addInc(2, 3))
-                })
-            //*/
+            async function main() {
+                const importObject = { env: { drawCell: (rIdx, cIdx, value) => {
+                    if (value === 1) {
+                        document.getElementById(`c_${rIdx}_${cIdx}`).style.background = 'black';
+                    } else {
+                        document.getElementById(`c_${rIdx}_${cIdx}`).style.background = 'white';
+                    }
+                } } }
+                const results = await WebAssembly.instantiateStreaming(fetch("./main.wasm"), importObject)
+                const wasmIface = results.instance.exports
 
-            //*
-            WebAssembly.instantiateStreaming(fetch("./main.wasm"), importObject).then((results) => {
-                console.log(results.instance.exports.addInc(2, 3))
-            })
-            //*/
+                const nRows = 10
+                const nCols = 10
+
+                wasmIface.init(nRows, nCols)
+
+                const gameTable = document.createElement('table')
+                document.getElementById('game').appendChild(gameTable)
+
+                for (let rIdx = 0; rIdx < nRows; rIdx += 1) {
+                    const row = document.createElement('tr')
+                    for (let cIdx = 0; cIdx < nCols; cIdx += 1) {
+                        const cell = document.createElement('td')
+                        cell.id = `c_${rIdx}_${cIdx}`
+                        cell.onclick = () => {
+                            const nextVal = cell.style.background !== 'black' ? 1 : 0
+                            wasmIface.setCellValue(rIdx, cIdx, nextVal)
+                        }
+                        row.appendChild(cell)
+                    }
+                    gameTable.appendChild(row)
+                }
+
+                document.getElementById('next-state').onclick = () => {
+                    wasmIface.calcNextState()
+                    wasmIface.drawCurrentGameState()
+                }
+            }
+            main();
         </script>
     </body>
 </html>
