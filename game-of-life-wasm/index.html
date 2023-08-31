@@ -10,7 +10,7 @@
     </head>
     <body>
         <div id="game"></div>
-        <button id="next-state">Next State</button>
+        <button id="play-stop">Play</button>
         <script>
             async function main() {
                 const importObject = { env: { drawCell: (rIdx, cIdx, value) => {
@@ -45,10 +45,25 @@
                     gameTable.appendChild(row)
                 }
 
-                document.getElementById('next-state').onclick = () => {
-                    wasmIface.calcNextState()
-                    wasmIface.drawCurrentGameState()
+                let isPlaying = false;
+                async function play() {
+                    isPlaying = true;
+                    document.getElementById('play-stop').onclick = stop
+                    document.getElementById('play-stop').innerHTML = 'Stop'
+
+                    while(isPlaying) {
+                        wasmIface.calcNextState()
+                        wasmIface.drawCurrentGameState()
+                        await new Promise(resolve => setTimeout(resolve, 300))
+                    }
                 }
+
+                function stop() {
+                    isPlaying = false;
+                    document.getElementById('play-stop').onclick = play
+                    document.getElementById('play-stop').innerHTML = 'play'
+                }
+                document.getElementById('play-stop').onclick = play
             }
             main();
         </script>

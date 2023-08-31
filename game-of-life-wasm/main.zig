@@ -27,6 +27,10 @@ export fn init(n_rows: u32, n_cols: u32) void {
     next_game_state = game_state_2;
 }
 
+export fn destroy() void {
+    std.heap.page_allocator.free(full_game_state.state_matrix);
+}
+
 fn getCellValue(r_idx: i32, c_idx: i32) u8 {
     var real_r_idx = r_idx;
     var real_c_idx = c_idx;
