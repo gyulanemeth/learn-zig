@@ -1,0 +1,90 @@
+<html>
+    <head>
+        <title>js image manipulation test</title>
+        <style>
+          body {
+            margin: 0;
+            padding: 0;
+          }
+
+          #canvas {
+            transform: scale(0.4) translate(-70%, -70%);
+          }
+        </style>
+    </head>
+    <body>
+        <button id="grayscale-btn">grayscale</button><span id="exec-time"></span>
+        <canvas id="canvas"></canvas>
+        <script>
+            const canvas = document.getElementById('canvas')
+            const context = canvas.getContext('2d')
+
+            function loadImg(url) {
+              return new Promise(resolve => {
+                let img = new Image()
+                img.crossOrigin = 'Anonymous'
+                img.onload = () => resolve(img)
+                img.src = url
+              })
+            }
+
+            async function loadImgToCanvas(url) {
+              const img = await loadImg(url)
+              canvas.width = img.naturalWidth
+              canvas.height = img.naturalHeight
+              context.drawImage(img, 0, 0)
+
+              document.getElementById('grayscale-btn').onclick = toGrayscale
+            }
+
+            function getPixelIndices(width, x, y) {
+              const rIdx = y * (width * 4) + x * 4
+              const gIdx = rIdx + 1
+              const bIdx = rIdx + 2
+              const aIdx = rIdx + 3
+
+              return [ rIdx, gIdx, bIdx, aIdx ]
+            }
+            function getPixel(imgData, x, y) {
+              const [ rIdx, gIdx, bIdx, aIdx ] = getPixelIndices(imgData.width, x, y)
+
+              return {
+                r: imgData.data[rIdx],
+                g: imgData.data[gIdx],
+                b: imgData.data[bIdx],
+                a: imgData.data[aIdx]
+              }
+            }
+
+            function setPixel(imgData, x, y, { r, g, b, a }) {
+              const [ rIdx, gIdx, bIdx, aIdx ] = getPixelIndices(imgData.width, x, y)
+
+              imgData.data[rIdx] = r
+              imgData.data[gIdx] = g
+              imgData.data[bIdx] = b
+            }
+            
+            function toGrayscale() {
+              const start = performance.now()
+              const imgData = context.getImageData(0, 0, canvas.width, canvas.height);
+
+              for (let rIdx = 0; rIdx < imgData.height; rIdx += 1) {
+                for (let cIdx = 0; cIdx < imgData.width; cIdx += 1) {
+                  const pixel = getPixel(imgData, cIdx, rIdx)
+                  const avg = Math.floor((pixel.r + pixel.g + pixel.b) / 3)
+                  pixel.r = avg
+                  pixel.g = avg
+                  pixel.b = avg
+
+                  setPixel(imgData, cIdx, rIdx, pixel)
+                }
+              }
+              context.putImageData(imgData, 0, 0)
+              const execSpan = document.getElementById('exec-time')
+              execSpan.innerHTML = `Execution time: ${performance.now() - start}`
+            }
+
+            loadImgToCanvas('./valencia.jpeg')
+        </script>
+    </body>
+</html>
