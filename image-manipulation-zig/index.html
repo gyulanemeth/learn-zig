@@ -6,10 +6,6 @@
             margin: 0;
             padding: 0;
           }
-
-          #canvas {
-            transform: scale(0.4) translate(-70%, -70%);
-          }
         </style>
     </head>
     <body>
@@ -17,8 +13,12 @@
         <button id="invert-btn-2">invert js</button>
         <button id="to-grayscale-btn">to grayscale zig wasm</button>
         <button id="to-grayscale-btn-2">to grayscale js</button>
+        <button id="blur-btn">blur zig wasm</button>
+        <button id="blur-btn-2">blur js</button>
         <span id="exec-time"></span>
-        <canvas id="canvas"></canvas>
+        <div>
+            <canvas id="canvas"></canvas>
+        </div>
         <script>
             const canvas = document.getElementById('canvas')
             const context = canvas.getContext('2d', { willReadFrequently: true })
@@ -42,7 +42,8 @@
             async function main() {
                 const time1 = performance.now()
 
-                await loadImgToCanvas('./valencia.jpeg')
+                await loadImgToCanvas('./lena.png')
+                // await loadImgToCanvas('./valencia.jpeg')
                 const time2 = performance.now()
                 console.log('image to canvas', time2 - time1)
 
@@ -135,8 +136,9 @@
                     const aIdx = rIdx + 3
 
                     return [ rIdx, gIdx, bIdx, aIdx ]
-                    }
-                    function getPixel(imgData, x, y) {
+                }
+
+                function getPixel(imgData, x, y) {
                     const [ rIdx, gIdx, bIdx, aIdx ] = getPixelIndices(imgData.width, x, y)
 
                     return {
@@ -153,6 +155,7 @@
                     imgData.data[rIdx] = r
                     imgData.data[gIdx] = g
                     imgData.data[bIdx] = b
+                    imgData.data[aIdx] = a
                 }
 
                 function toGrayscale() {
@@ -183,25 +186,178 @@
 
                     for (let rIdx = 0; rIdx < imgData.height; rIdx += 1) {
                         for (let cIdx = 0; cIdx < imgData.width; cIdx += 1) {
-                        const pixel = getPixel(imgData, cIdx, rIdx)
-                        const avg = Math.floor((pixel.r + pixel.g + pixel.b) / 3)
-                        pixel.r = avg
-                        pixel.g = avg
-                        pixel.b = avg
+                            const pixel = getPixel(imgData, cIdx, rIdx)
+                            const avg = Math.floor((pixel.r + pixel.g + pixel.b) / 3)
+                            pixel.r = avg
+                            pixel.g = avg
+                            pixel.b = avg
 
-                        setPixel(imgData, cIdx, rIdx, pixel)
+                            setPixel(imgData, cIdx, rIdx, pixel)
                         }
                     }
                     context.putImageData(imgData, 0, 0)
                     const execSpan = document.getElementById('exec-time')
                     execSpan.innerHTML = `Execution time: ${performance.now() - start}`
-                 }
+                }
+
+                function blur() {
+                    const start = performance.now()
+                    const imgData = context.getImageData(0, 0, canvas.width, canvas.height);
+
+                    const rowLength = imgData.width * 4
+                    
+                    drawPixelCb = (rIdx, cIdx, r, g, b, a) => {
+                        const redIdx = rIdx * rowLength + cIdx * 4
+                        imgData.data[redIdx] = r
+                        imgData.data[redIdx + 1] = g
+                        imgData.data[redIdx + 2] = b
+                        imgData.data[redIdx + 3] = a
+                    }
+
+                    drawPixelsDoneCb = () => {
+                        context.putImageData(imgData, 0, 0)
+                        const execSpan = document.getElementById('exec-time')
+                        execSpan.innerHTML = `Execution time: ${performance.now() - start}`
+                    }
+                    wasmIface.blur()
+                }
+
+                function blur2() {
+                    const start = performance.now()
+                    const imgData = context.getImageData(0, 0, canvas.width, canvas.height);
+
+                    const newImageData = context.createImageData(imgData);
+
+                    const maxX = imgData.width - 1
+                    const maxY = imgData.height - 1
+
+                    function avgPixels(imgData, pixelCoords) {
+                        const newPixel = pixelCoords
+                            .map(actIdxTuple => getPixel(imgData, actIdxTuple.x, actIdxTuple.y))
+                            .reduce((prev, current) => {
+                                return {
+                                    r: prev.r + current.r,
+                                    g: prev.g + current.g,
+                                    b: prev.b + current.b,
+                                    a: prev.a + current.a
+                                }
+                            }, { r: 0, g: 0, b: 0, a: 0 })
+
+                        newPixel.r /= pixelCoords.length
+                        newPixel.g /= pixelCoords.length
+                        newPixel.b /= pixelCoords.length
+                        newPixel.a /= pixelCoords.length
+
+                        return newPixel
+                    }
+                    // corners
+                    // top-left
+                    setPixel(newImageData, 0, 0, avgPixels(imgData, [
+                        { x: 0, y: 0 },
+                        { x: 0, y: 1 },
+                        { x: 1, y: 0 },
+                        { x: 1, y: 1 }
+                    ]))
+                    // top-right
+                    setPixel(newImageData, maxX, 0, avgPixels(imgData, [
+                        { x: maxX, y: 0 },
+                        { x: maxX, y: 1 },
+                        { x: maxX - 1, y: 0 },
+                        { x: maxX - 1, y: 1 }
+                    ]))
+                    // bottom-left
+                    setPixel(newImageData, 0, maxY, avgPixels(imgData, [
+                        { x: 0, y: maxY },
+                        { x: 0, y: maxY - 1 },
+                        { x: 1, y: maxY },
+                        { x: 1, y: maxY - 1 }
+                    ]))
+                    // bottom-right
+                    setPixel(newImageData, maxX, maxY, avgPixels(imgData, [
+                        { x: maxX, y: maxY },
+                        { x: maxX, y: maxY - 1 },
+                        { x: maxX - 1, y: maxY },
+                        { x: maxX - 1, y: maxY - 1 }
+                    ]))
+
+                    // edges
+                    // top & bottom
+                    for (let cIdx = 1; cIdx < maxX; cIdx += 1) {
+                        const topIndices = [
+                            { x: cIdx - 1, y: 0 },
+                            { x: cIdx, y: 0 },
+                            { x: cIdx + 1, y: 0 },
+                            { x: cIdx - 1, y: 1 },
+                            { x: cIdx, y: 1 },
+                            { x: cIdx + 1, y: 1 }
+                        ]
+                        setPixel(newImageData, cIdx, 0, avgPixels(imgData, topIndices))
+
+                        const bottomIndices = [
+                            { x: cIdx - 1, y: maxY },
+                            { x: cIdx, y: maxY },
+                            { x: cIdx + 1, y: maxY },
+                            { x: cIdx - 1, y: maxY - 1 },
+                            { x: cIdx, y: maxY - 1 },
+                            { x: cIdx + 1, y: maxY - 1 }
+                        ]
+                        setPixel(newImageData, cIdx, maxY, avgPixels(imgData, bottomIndices))
+                    }
+                    // left & right
+                    for (let rIdx = 0; rIdx < maxY; rIdx += 1) {
+                        const leftIndices = [
+                            { x: 0, y: rIdx - 1 },
+                            { x: 0, y: rIdx },
+                            { x: 0, y: rIdx + 1 },
+                            { x: 1, y: rIdx - 1 },
+                            { x: 1, y: rIdx },
+                            { x: 1, y: rIdx + 1 }
+                        ]
+                        setPixel(newImageData, 0, rIdx, avgPixels(imgData, leftIndices))
+
+                        const rightIndices = [
+                            { x: maxX, y: rIdx - 1 },
+                            { x: maxX, y: rIdx },
+                            { x: maxX, y: rIdx + 1 },
+                            { x: maxX - 1, y: rIdx - 1 },
+                            { x: maxX - 1, y: rIdx },
+                            { x: maxX - 1, y: rIdx + 1 }
+                        ]
+                        setPixel(newImageData, maxX, rIdx, avgPixels(imgData, rightIndices))
+                    }
+
+
+                    // middle part
+                    for (let rIdx = 1; rIdx < maxY; rIdx += 1) {
+                        for (let cIdx = 1; cIdx < maxX; cIdx += 1) {
+                            const indices = [
+                                { x: cIdx - 1, y: rIdx - 1},
+                                { x: cIdx - 1, y: rIdx},
+                                { x: cIdx - 1, y: rIdx + 1},
+                                { x: cIdx, y: rIdx - 1},
+                                { x: cIdx, y: rIdx},
+                                { x: cIdx, y: rIdx + 1},
+                                { x: cIdx + 1, y: rIdx - 1},
+                                { x: cIdx + 1, y: rIdx},
+                                { x: cIdx + 1, y: rIdx + 1}
+                            ]
+                            setPixel(newImageData, cIdx, rIdx, avgPixels(imgData, indices))
+                        }
+                    }
+
+                    context.putImageData(newImageData, 0, 0)
+                    const execSpan = document.getElementById('exec-time')
+                    execSpan.innerHTML = `Execution time: ${performance.now() - start}`
+                }
 
                 document.getElementById('invert-btn').onclick = invert
                 document.getElementById('invert-btn-2').onclick = invert2
 
                 document.getElementById('to-grayscale-btn').onclick = toGrayscale
                 document.getElementById('to-grayscale-btn-2').onclick = toGrayscale2
+
+                document.getElementById('blur-btn').onclick = blur
+                document.getElementById('blur-btn-2').onclick = blur2
             }
             main()
         </script>

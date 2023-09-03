@@ -1,6 +1,8 @@
 const std = @import("std");
 
 const ImageData = struct { n_rows: u32, n_cols: u32, data: []u8 };
+const Pixel = struct { r: u8, g: u8, b: u8, a: u8 };
+const Coord = struct { x: u32, y: u32 };
 
 extern fn drawPixel(r_idx: usize, c_idx: usize, r: u8, g: u8, b: u8, a: u8) void;
 extern fn drawPixelsDone() void;
@@ -35,6 +37,17 @@ fn swap_states() void {
     next_state = tmp;
 }
 
+fn get_pixel(r_idx: usize, c_idx: usize) Pixel {
+    const red_idx = (r_idx * current_state.n_cols + c_idx) * 4;
+
+    return Pixel{
+        .r = current_state.data[red_idx],
+        .g = current_state.data[red_idx + 1],
+        .b = current_state.data[red_idx + 2],
+        .a = current_state.data[red_idx + 3]
+    };
+}
+
 export fn set_pixel(r_idx: usize, c_idx: usize, r: u8, g: u8, b: u8, a: u8) void {
     const red_idx = (r_idx * current_state.n_cols + c_idx) * 4;
     current_state.data[red_idx] = r;
@@ -43,12 +56,12 @@ export fn set_pixel(r_idx: usize, c_idx: usize, r: u8, g: u8, b: u8, a: u8) void
     current_state.data[red_idx + 3] = a;
 }
 
-export fn set_next_pixel(r_idx: usize, c_idx: usize, r: u8, g: u8, b: u8, a: u8) void {
-    const red_idx = (r_idx * next_state.n_cols + c_idx) * 4;
-    next_state.data[red_idx] = r;
-    next_state.data[red_idx + 1] = g;
-    next_state.data[red_idx + 2] = b;
-    next_state.data[red_idx + 3] = a;
+fn set_next_pixel(coord: Coord, pixel: Pixel) void {
+    const red_idx = (coord.y * next_state.n_cols + coord.x) * 4;
+    next_state.data[red_idx] = pixel.r;
+    next_state.data[red_idx + 1] = pixel.g;
+    next_state.data[red_idx + 2] = pixel.b;
+    next_state.data[red_idx + 3] = pixel.a;
 }
 
 export fn invert() void {
@@ -76,6 +89,137 @@ export fn to_grayscale() void {
         next_state.data[idx + 1] = avg8;
         next_state.data[idx + 2] = avg8;
     }
+    swap_states();
+    draw_pixels();
+}
+
+fn avgPixels(pixelCoords: []Coord) Pixel {
+    var avgR: u16 = 0;
+    var avgG: u16 = 0;
+    var avgB: u16 = 0;
+    var avgA: u16 = 0;
+
+    for (pixelCoords) |coord| {
+        const actPixel = get_pixel(coord.y, coord.x);
+        avgR += @intCast(actPixel.r);
+        avgG += @intCast(actPixel.g);
+        avgB += @intCast(actPixel.b);
+        avgA += @intCast(actPixel.a);
+    }
+
+    avgR /= @intCast(pixelCoords.len);
+    avgG /= @intCast(pixelCoords.len);
+    avgB /= @intCast(pixelCoords.len);
+    avgA /= @intCast(pixelCoords.len);
+
+    return Pixel{
+        .r = @intCast(avgR),
+        .g = @intCast(avgG),
+        .b = @intCast(avgB),
+        .a = @intCast(avgA)
+    };
+}
+
+export fn blur() void {
+    const maxX = current_state.n_rows - 1;
+    const maxY = current_state.n_cols - 1;
+
+    // corners
+    // top-left
+    var corner_coords = [4]Coord{
+        .{ .x = 0, .y = 0 },
+        .{ .x = 0, .y = 1 },
+        .{ .x = 1, .y = 0 },
+        .{ .x = 1, .y = 1 }
+    };
+    set_next_pixel(Coord{ .x = 0, .y = 0}, avgPixels(@constCast(&corner_coords)));
+    // top-right
+    corner_coords = [4]Coord{
+        .{ .x = maxX, .y = 0 },
+        .{ .x = maxX, .y = 1 },
+        .{ .x = maxX - 1, .y = 0 },
+        .{ .x = maxX - 1, .y = 1 }
+    };
+    set_next_pixel(Coord{ .x = maxX, .y = 0 }, avgPixels(@constCast(&corner_coords)));
+    // bottom-left
+    corner_coords = [4]Coord{
+        .{ .x = 0, .y = maxY },
+        .{ .x = 0, .y = maxY - 1 },
+        .{ .x = 1, .y = maxY },
+        .{ .x = 1, .y = maxY - 1 }
+    };
+    set_next_pixel(Coord{ .x = 0, .y = maxY }, avgPixels(@constCast(&corner_coords)));
+    // bottom-right
+    corner_coords = [4]Coord{
+        .{ .x = maxX, .y = maxY },
+        .{ .x = maxX, .y = maxY - 1 },
+        .{ .x = maxX - 1, .y = maxY },
+        .{ .x = maxX - 1, .y = maxY - 1 }
+    };
+    set_next_pixel(Coord{ .x = maxX, .y = maxY}, avgPixels(@constCast(&corner_coords)));
+
+    // edges
+    // top & bottom
+    for (1..maxX) |c_idx| {
+        var edge_coords = [6]Coord{
+            .{ .x = c_idx - 1, .y = 0 },
+            .{ .x = c_idx, .y = 0 },
+            .{ .x = c_idx + 1, .y = 0 },
+            .{ .x = c_idx - 1, .y = 1 },
+            .{ .x = c_idx, .y = 1 },
+            .{ .x = c_idx + 1, .y = 1 }
+        };
+        set_next_pixel(Coord{ .x = c_idx, .y = 0}, avgPixels(@constCast(&edge_coords)));
+        edge_coords = [6]Coord{
+            .{ .x = c_idx - 1, .y = maxY },
+            .{ .x = c_idx, .y = maxY },
+            .{ .x = c_idx + 1, .y = maxY },
+            .{ .x = c_idx - 1, .y = maxY - 1 },
+            .{ .x = c_idx, .y = maxY - 1 },
+            .{ .x = c_idx + 1, .y = maxY - 1 }
+        };
+        set_next_pixel(Coord{ .x = c_idx, .y = maxY}, avgPixels(@constCast(&edge_coords)));
+    }
+    // left & right
+    for (1..maxY) |r_idx| {
+        var edge_coords = [6]Coord{
+            .{ .x = 0, .y = r_idx - 1 },
+            .{ .x = 0, .y = r_idx },
+            .{ .x = 0, .y = r_idx + 1 },
+            .{ .x = 1, .y = r_idx - 1 },
+            .{ .x = 1, .y = r_idx },
+            .{ .x = 1, .y = r_idx + 1 }
+        };
+        set_next_pixel(Coord{ .x = 0, .y = r_idx}, avgPixels(@constCast(&edge_coords)));
+        edge_coords = [6]Coord{
+            .{ .x = maxX, .y = r_idx - 1 },
+            .{ .x = maxX, .y = r_idx },
+            .{ .x = maxX, .y = r_idx + 1 },
+            .{ .x = maxX - 1, .y = r_idx - 1 },
+            .{ .x = maxX - 1, .y = r_idx },
+            .{ .x = maxX - 1, .y = r_idx + 1 }
+        };
+        set_next_pixel(Coord{ .x = maxX, .y = r_idx}, avgPixels(@constCast(&edge_coords)));
+    }
+
+    // middle part
+    for(1..maxY) |r_idx| {
+        for(1..maxX) |c_idx| {
+            const coords = [9]Coord{
+                .{ .x = c_idx - 1, .y = r_idx - 1},
+                .{ .x = c_idx - 1, .y = r_idx},
+                .{ .x = c_idx - 1, .y = r_idx + 1},
+                .{ .x = c_idx, .y = r_idx - 1},
+                .{ .x = c_idx, .y = r_idx},
+                .{ .x = c_idx, .y = r_idx + 1},
+                .{ .x = c_idx + 1, .y = r_idx - 1},
+                .{ .x = c_idx + 1, .y = r_idx},
+                .{ .x = c_idx + 1, .y = r_idx + 1}
+            };
+            set_next_pixel(Coord{ .x = c_idx, .y = r_idx}, avgPixels(@constCast(&coords)));
+        }
+    }
+
     swap_states();
     draw_pixels();
 }
