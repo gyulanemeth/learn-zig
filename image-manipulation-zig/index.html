@@ -15,6 +15,8 @@
         <button id="to-grayscale-btn-2">to grayscale js</button>
         <button id="blur-btn">blur zig wasm</button>
         <button id="blur-btn-2">blur js</button>
+        <button id="edge-btn-2">edge detection js</button>
+        <button id="sharpen-btn-2">sharpen js</button>
         <span id="exec-time"></span>
         <div>
             <canvas id="canvas"></canvas>
@@ -222,7 +224,7 @@
                     wasmIface.blur()
                 }
 
-                function blur2() {
+                function convolution(kernel) {
                     const start = performance.now()
                     const imgData = context.getImageData(0, 0, canvas.width, canvas.height);
 
@@ -231,54 +233,57 @@
                     const maxX = imgData.width - 1
                     const maxY = imgData.height - 1
 
-                    function avgPixels(imgData, pixelCoords) {
-                        const newPixel = pixelCoords
-                            .map(actIdxTuple => getPixel(imgData, actIdxTuple.x, actIdxTuple.y))
-                            .reduce((prev, current) => {
-                                return {
-                                    r: prev.r + current.r,
-                                    g: prev.g + current.g,
-                                    b: prev.b + current.b,
-                                    a: prev.a + current.a
-                                }
-                            }, { r: 0, g: 0, b: 0, a: 0 })
-
-                        newPixel.r /= pixelCoords.length
-                        newPixel.g /= pixelCoords.length
-                        newPixel.b /= pixelCoords.length
-                        newPixel.a /= pixelCoords.length
+                    function avgPixels(imgData, pixelCoords, kernel) {
+                        const newPixel = { r: 0, g: 0, b: 0, a: 255 } // 255 alpha is temporal...
+                        for (let idx = 0; idx < pixelCoords.length; idx += 1) {
+                            const actCoord = pixelCoords[idx]
+                            const actKernel = kernel[idx]
+                            const actPixel = getPixel(imgData, actCoord.x, actCoord.y)
+                            newPixel.r += actKernel * actPixel.r
+                            newPixel.g += actKernel * actPixel.g
+                            newPixel.b += actKernel * actPixel.b
+                        }
 
                         return newPixel
                     }
                     // corners
+                    /*
+                        kernel matrix help:
+
+                        [
+                            kernel[0], kernel[1], kernel[2],
+                            kernel[3], kernel[4], kernel[5],
+                            kernel[6], kernel[7], kernel[8]
+                        ]
+                    */
                     // top-left
                     setPixel(newImageData, 0, 0, avgPixels(imgData, [
                         { x: 0, y: 0 },
                         { x: 0, y: 1 },
                         { x: 1, y: 0 },
                         { x: 1, y: 1 }
-                    ]))
+                    ], [kernel[4], kernel[7], kernel[5], kernel[8]]))
                     // top-right
                     setPixel(newImageData, maxX, 0, avgPixels(imgData, [
                         { x: maxX, y: 0 },
                         { x: maxX, y: 1 },
                         { x: maxX - 1, y: 0 },
                         { x: maxX - 1, y: 1 }
-                    ]))
+                    ], [kernel[4], kernel[7], kernel[3], kernel[6]]))
                     // bottom-left
                     setPixel(newImageData, 0, maxY, avgPixels(imgData, [
                         { x: 0, y: maxY },
                         { x: 0, y: maxY - 1 },
                         { x: 1, y: maxY },
                         { x: 1, y: maxY - 1 }
-                    ]))
+                    ], kernel[4], kernel[1], kernel[5], kernel[2]))
                     // bottom-right
                     setPixel(newImageData, maxX, maxY, avgPixels(imgData, [
                         { x: maxX, y: maxY },
                         { x: maxX, y: maxY - 1 },
                         { x: maxX - 1, y: maxY },
                         { x: maxX - 1, y: maxY - 1 }
-                    ]))
+                    ], kernel[4], kernel[1], kernel[3], kernel[0]))
 
                     // edges
                     // top & bottom
@@ -291,17 +296,21 @@
                             { x: cIdx, y: 1 },
                             { x: cIdx + 1, y: 1 }
                         ]
-                        setPixel(newImageData, cIdx, 0, avgPixels(imgData, topIndices))
+                        setPixel(newImageData, cIdx, 0, avgPixels(imgData, topIndices, [
+                            kernel[3], kernel[4], kernel[5], kernel[6], kernel[7], kernel[8]
+                        ]))
 
                         const bottomIndices = [
-                            { x: cIdx - 1, y: maxY },
-                            { x: cIdx, y: maxY },
-                            { x: cIdx + 1, y: maxY },
                             { x: cIdx - 1, y: maxY - 1 },
                             { x: cIdx, y: maxY - 1 },
-                            { x: cIdx + 1, y: maxY - 1 }
+                            { x: cIdx + 1, y: maxY - 1 },
+                            { x: cIdx - 1, y: maxY },
+                            { x: cIdx, y: maxY },
+                            { x: cIdx + 1, y: maxY }
                         ]
-                        setPixel(newImageData, cIdx, maxY, avgPixels(imgData, bottomIndices))
+                        setPixel(newImageData, cIdx, maxY, avgPixels(imgData, bottomIndices, [
+                            kernel[0], kernel[1], kernel[2], kernel[3], kernel[4], kernel[5]
+                        ]))
                     }
                     // left & right
                     for (let rIdx = 0; rIdx < maxY; rIdx += 1) {
@@ -313,17 +322,21 @@
                             { x: 1, y: rIdx },
                             { x: 1, y: rIdx + 1 }
                         ]
-                        setPixel(newImageData, 0, rIdx, avgPixels(imgData, leftIndices))
+                        setPixel(newImageData, 0, rIdx, avgPixels(imgData, leftIndices, [
+                            kernel[1], kernel[2], kernel[4], kernel[5], kernel[7], kernel[8]
+                        ]))
 
                         const rightIndices = [
-                            { x: maxX, y: rIdx - 1 },
-                            { x: maxX, y: rIdx },
-                            { x: maxX, y: rIdx + 1 },
                             { x: maxX - 1, y: rIdx - 1 },
                             { x: maxX - 1, y: rIdx },
-                            { x: maxX - 1, y: rIdx + 1 }
+                            { x: maxX - 1, y: rIdx + 1 },
+                            { x: maxX, y: rIdx - 1 },
+                            { x: maxX, y: rIdx },
+                            { x: maxX, y: rIdx + 1 }
                         ]
-                        setPixel(newImageData, maxX, rIdx, avgPixels(imgData, rightIndices))
+                        setPixel(newImageData, maxX, rIdx, avgPixels(imgData, rightIndices, [
+                            kernel[0], kernel[1], kernel[3], kernel[4], kernel[6], kernel[7]
+                        ]))
                     }
 
 
@@ -331,17 +344,17 @@
                     for (let rIdx = 1; rIdx < maxY; rIdx += 1) {
                         for (let cIdx = 1; cIdx < maxX; cIdx += 1) {
                             const indices = [
-                                { x: cIdx - 1, y: rIdx - 1},
-                                { x: cIdx - 1, y: rIdx},
-                                { x: cIdx - 1, y: rIdx + 1},
-                                { x: cIdx, y: rIdx - 1},
-                                { x: cIdx, y: rIdx},
-                                { x: cIdx, y: rIdx + 1},
-                                { x: cIdx + 1, y: rIdx - 1},
-                                { x: cIdx + 1, y: rIdx},
-                                { x: cIdx + 1, y: rIdx + 1}
+                                { y: rIdx - 1, x: cIdx - 1},
+                                { y: rIdx - 1, x: cIdx},
+                                { y: rIdx - 1, x: cIdx + 1},
+                                { y: rIdx, x: cIdx - 1},
+                                { y: rIdx, x: cIdx},
+                                { y: rIdx, x: cIdx + 1},
+                                { y: rIdx + 1, x: cIdx - 1},
+                                { y: rIdx + 1, x: cIdx},
+                                { y: rIdx + 1, x: cIdx + 1}
                             ]
-                            setPixel(newImageData, cIdx, rIdx, avgPixels(imgData, indices))
+                            setPixel(newImageData, cIdx, rIdx, avgPixels(imgData, indices, kernel))
                         }
                     }
 
@@ -349,6 +362,37 @@
                     const execSpan = document.getElementById('exec-time')
                     execSpan.innerHTML = `Execution time: ${performance.now() - start}`
                 }
+
+                function blur2() {
+                    const kernel = [
+                        0.1, 0.1, 0.1,
+                        0.1, 0.2, 0.1,
+                        0.1, 0.1, 0.1
+                    ]
+
+                    convolution(kernel)
+                }
+
+                function edgeDetection2() {
+                    const kernel = [
+                        -1, -1, -1,
+                        -1, 8, -1,
+                        -1, -1, -1
+                    ]
+
+                    convolution(kernel)
+                }
+
+                function sharpen2() {
+                    const kernel = [
+                        0, -1, 0,
+                        -1, 5, -1,
+                        0, -1, 0
+                    ]
+
+                    convolution(kernel)
+                }
+
 
                 document.getElementById('invert-btn').onclick = invert
                 document.getElementById('invert-btn-2').onclick = invert2
@@ -358,6 +402,10 @@
 
                 document.getElementById('blur-btn').onclick = blur
                 document.getElementById('blur-btn-2').onclick = blur2
+
+                document.getElementById('edge-btn-2').onclick = edgeDetection2
+
+                document.getElementById('sharpen-btn-2').onclick = sharpen2
             }
             main()
         </script>
