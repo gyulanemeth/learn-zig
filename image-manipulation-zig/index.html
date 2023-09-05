@@ -6,20 +6,41 @@
             margin: 0;
             padding: 0;
           }
+          td {
+            padding: 5px;
+          }
         </style>
     </head>
     <body>
-        <button id="invert-btn">invert zig wasm</button>
-        <button id="invert-btn-2">invert js</button>
-        <button id="to-grayscale-btn">to grayscale zig wasm</button>
-        <button id="to-grayscale-btn-2">to grayscale js</button>
-        <button id="blur-btn">blur zig wasm</button>
-        <button id="blur-btn-2">blur js</button>
-        <button id="edge-btn-2">edge detection js</button>
-        <button id="sharpen-btn-2">sharpen js</button>
-        <span id="exec-time"></span>
+        <table>
+            <tr>
+                <td>Javascript</td>
+                <td><button id="invert-js">Invert</button></td>
+                <td><button id="grayscale-js">Grayscale</button></td>
+                <td><button id="blur-js">Blur</button></td>
+                <td><button id="sharpen-js">Sharpen</button></td>
+                <td><button id="edge-js">Edge detection</button></td>
+            </tr>
+            <tr>
+                <td>Zig WASM</td>
+                <td><button id="invert-zig">Invert</button></td>
+                <td><button id="grayscale-zig">Grayscale</button></td>
+                <td><button id="blur-zig">Blur</button></td>
+                <td><button id="sharpen-zig">Sharpen</button></td>
+                <td><button id="edge-zig">Edge detection</button></td>
+            </tr>
+        </table>
+        <div>
+            
+            
+            
+        </div>
         <div>
             <canvas id="canvas"></canvas>
+        </div>
+        <div>
+            <span>Last exec. time:</span>
+            <span id="exec-time"></span>
         </div>
         <script>
             const canvas = document.getElementById('canvas')
@@ -105,7 +126,7 @@
                     drawPixelsDoneCb = () => {
                         context.putImageData(imgData, 0, 0)
                         const execSpan = document.getElementById('exec-time')
-                        execSpan.innerHTML = `Execution time: ${performance.now() - start}`
+                        execSpan.innerHTML = performance.now() - start
                     }
                     wasmIface.invert()
                 }
@@ -128,7 +149,7 @@
 
                     context.putImageData(imgData, 0, 0)
                     const execSpan = document.getElementById('exec-time')
-                    execSpan.innerHTML = `Execution time: ${performance.now() - start}`
+                    execSpan.innerHTML = performance.now() - start
                 }
 
                 function getPixelIndices(width, x, y) {
@@ -177,7 +198,7 @@
                     drawPixelsDoneCb = () => {
                         context.putImageData(imgData, 0, 0)
                         const execSpan = document.getElementById('exec-time')
-                        execSpan.innerHTML = `Execution time: ${performance.now() - start}`
+                        execSpan.innerHTML = performance.now() - start
                     }
                     wasmIface.to_grayscale()
                 }
@@ -199,7 +220,7 @@
                     }
                     context.putImageData(imgData, 0, 0)
                     const execSpan = document.getElementById('exec-time')
-                    execSpan.innerHTML = `Execution time: ${performance.now() - start}`
+                    execSpan.innerHTML = performance.now() - start
                 }
 
                 function blur() {
@@ -219,9 +240,53 @@
                     drawPixelsDoneCb = () => {
                         context.putImageData(imgData, 0, 0)
                         const execSpan = document.getElementById('exec-time')
-                        execSpan.innerHTML = `Execution time: ${performance.now() - start}`
+                        execSpan.innerHTML = performance.now() - start
                     }
                     wasmIface.blur()
+                }
+
+                function sharpen() {
+                    const start = performance.now()
+                    const imgData = context.getImageData(0, 0, canvas.width, canvas.height);
+
+                    const rowLength = imgData.width * 4
+                    
+                    drawPixelCb = (rIdx, cIdx, r, g, b, a) => {
+                        const redIdx = rIdx * rowLength + cIdx * 4
+                        imgData.data[redIdx] = r
+                        imgData.data[redIdx + 1] = g
+                        imgData.data[redIdx + 2] = b
+                        imgData.data[redIdx + 3] = a
+                    }
+
+                    drawPixelsDoneCb = () => {
+                        context.putImageData(imgData, 0, 0)
+                        const execSpan = document.getElementById('exec-time')
+                        execSpan.innerHTML = performance.now() - start
+                    }
+                    wasmIface.sharpen()
+                }
+
+                function edgeDetection() {
+                    const start = performance.now()
+                    const imgData = context.getImageData(0, 0, canvas.width, canvas.height);
+
+                    const rowLength = imgData.width * 4
+                    
+                    drawPixelCb = (rIdx, cIdx, r, g, b, a) => {
+                        const redIdx = rIdx * rowLength + cIdx * 4
+                        imgData.data[redIdx] = r
+                        imgData.data[redIdx + 1] = g
+                        imgData.data[redIdx + 2] = b
+                        imgData.data[redIdx + 3] = a
+                    }
+
+                    drawPixelsDoneCb = () => {
+                        context.putImageData(imgData, 0, 0)
+                        const execSpan = document.getElementById('exec-time')
+                        execSpan.innerHTML = performance.now() - start
+                    }
+                    wasmIface.edge_detection()
                 }
 
                 function convolution(kernel) {
@@ -360,7 +425,7 @@
 
                     context.putImageData(newImageData, 0, 0)
                     const execSpan = document.getElementById('exec-time')
-                    execSpan.innerHTML = `Execution time: ${performance.now() - start}`
+                    execSpan.innerHTML = performance.now() - start
                 }
 
                 function blur2() {
@@ -394,18 +459,17 @@
                 }
 
 
-                document.getElementById('invert-btn').onclick = invert
-                document.getElementById('invert-btn-2').onclick = invert2
+                document.getElementById('invert-js').onclick = invert2
+                document.getElementById('grayscale-js').onclick = toGrayscale2
+                document.getElementById('blur-js').onclick = blur2
+                document.getElementById('sharpen-js').onclick = sharpen2
+                document.getElementById('edge-js').onclick = edgeDetection2
 
-                document.getElementById('to-grayscale-btn').onclick = toGrayscale
-                document.getElementById('to-grayscale-btn-2').onclick = toGrayscale2
-
-                document.getElementById('blur-btn').onclick = blur
-                document.getElementById('blur-btn-2').onclick = blur2
-
-                document.getElementById('edge-btn-2').onclick = edgeDetection2
-
-                document.getElementById('sharpen-btn-2').onclick = sharpen2
+                document.getElementById('invert-zig').onclick = invert
+                document.getElementById('grayscale-zig').onclick = toGrayscale
+                document.getElementById('blur-zig').onclick = blur
+                document.getElementById('sharpen-zig').onclick = sharpen
+                document.getElementById('edge-zig').onclick = edgeDetection
             }
             main()
         </script>

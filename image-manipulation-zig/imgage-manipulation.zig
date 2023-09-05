@@ -93,34 +93,52 @@ export fn to_grayscale() void {
     draw_pixels();
 }
 
-fn avgPixels(pixelCoords: []Coord) Pixel {
-    var avgR: u16 = 0;
-    var avgG: u16 = 0;
-    var avgB: u16 = 0;
-    var avgA: u16 = 0;
+fn avgPixels(pixelCoords: []Coord, kernel: []f32) Pixel {
+    var avgR: f32 = 0;
+    var avgG: f32 = 0;
+    var avgB: f32 = 0;
+    var avgA: u16 = 255; // 255 alpha is temporal
 
-    for (pixelCoords) |coord| {
-        const actPixel = get_pixel(coord.y, coord.x);
-        avgR += @intCast(actPixel.r);
-        avgG += @intCast(actPixel.g);
-        avgB += @intCast(actPixel.b);
-        avgA += @intCast(actPixel.a);
+    for (pixelCoords, 0..) |coord, idx| {
+        const actPixel: Pixel = get_pixel(coord.y, coord.x);
+        const actKernel = kernel[idx];
+
+        const actR: f32 = @floatFromInt(actPixel.r);
+        const actG: f32 = @floatFromInt(actPixel.g);
+        const actB: f32 = @floatFromInt(actPixel.b);
+
+        avgR += actR * actKernel;
+        avgG += actG * actKernel;
+        avgB += actB * actKernel;
     }
 
-    avgR /= @intCast(pixelCoords.len);
-    avgG /= @intCast(pixelCoords.len);
-    avgB /= @intCast(pixelCoords.len);
-    avgA /= @intCast(pixelCoords.len);
+    if (avgR < 0) {
+        avgR = 0.0;
+    } else if (avgR > 255) {
+        avgR = 255.0;
+    }
+
+    if (avgG < 0) {
+        avgG = 0.0;
+    } else if (avgG > 255) {
+        avgG = 255.0;
+    }
+
+    if (avgB < 0) {
+        avgB = 0.0;
+    } else if (avgB > 255) {
+        avgB = 255.0;
+    }
 
     return Pixel{
-        .r = @intCast(avgR),
-        .g = @intCast(avgG),
-        .b = @intCast(avgB),
+        .r = @intFromFloat(avgR),
+        .g = @intFromFloat(avgG),
+        .b = @intFromFloat(avgB),
         .a = @intCast(avgA)
     };
 }
 
-export fn blur() void {
+fn convolution(kernel: []f32) void {
     const maxX = current_state.n_rows - 1;
     const maxY = current_state.n_cols - 1;
 
@@ -132,7 +150,8 @@ export fn blur() void {
         .{ .x = 1, .y = 0 },
         .{ .x = 1, .y = 1 }
     };
-    set_next_pixel(Coord{ .x = 0, .y = 0}, avgPixels(@constCast(&corner_coords)));
+    var cornerKernel = [_]f32{ kernel[4], kernel[7], kernel[5], kernel[8] };
+    set_next_pixel(Coord{ .x = 0, .y = 0}, avgPixels(@constCast(&corner_coords), @constCast(&cornerKernel)));
     // top-right
     corner_coords = [4]Coord{
         .{ .x = maxX, .y = 0 },
@@ -140,7 +159,8 @@ export fn blur() void {
         .{ .x = maxX - 1, .y = 0 },
         .{ .x = maxX - 1, .y = 1 }
     };
-    set_next_pixel(Coord{ .x = maxX, .y = 0 }, avgPixels(@constCast(&corner_coords)));
+    cornerKernel = [_]f32{ kernel[4], kernel[7], kernel[3], kernel[6] };
+    set_next_pixel(Coord{ .x = maxX, .y = 0 }, avgPixels(@constCast(&corner_coords), @constCast(&cornerKernel)));
     // bottom-left
     corner_coords = [4]Coord{
         .{ .x = 0, .y = maxY },
@@ -148,7 +168,8 @@ export fn blur() void {
         .{ .x = 1, .y = maxY },
         .{ .x = 1, .y = maxY - 1 }
     };
-    set_next_pixel(Coord{ .x = 0, .y = maxY }, avgPixels(@constCast(&corner_coords)));
+    cornerKernel = [_]f32{ kernel[4], kernel[1], kernel[5], kernel[2] };
+    set_next_pixel(Coord{ .x = 0, .y = maxY }, avgPixels(@constCast(&corner_coords), @constCast(&cornerKernel)));
     // bottom-right
     corner_coords = [4]Coord{
         .{ .x = maxX, .y = maxY },
@@ -156,10 +177,13 @@ export fn blur() void {
         .{ .x = maxX - 1, .y = maxY },
         .{ .x = maxX - 1, .y = maxY - 1 }
     };
-    set_next_pixel(Coord{ .x = maxX, .y = maxY}, avgPixels(@constCast(&corner_coords)));
+    cornerKernel = [_]f32{ kernel[4], kernel[1], kernel[3], kernel[0] };
+    set_next_pixel(Coord{ .x = maxX, .y = maxY}, avgPixels(@constCast(&corner_coords), @constCast(&cornerKernel)));
 
     // edges
     // top & bottom
+    var topKernel = [_]f32{ kernel[3], kernel[4], kernel[5], kernel[6], kernel[7], kernel[8] };
+    var bottomKernel = [_]f32{ kernel[0], kernel[1], kernel[2], kernel[3], kernel[4], kernel[5] };
     for (1..maxX) |c_idx| {
         var edge_coords = [6]Coord{
             .{ .x = c_idx - 1, .y = 0 },
@@ -169,18 +193,20 @@ export fn blur() void {
             .{ .x = c_idx, .y = 1 },
             .{ .x = c_idx + 1, .y = 1 }
         };
-        set_next_pixel(Coord{ .x = c_idx, .y = 0}, avgPixels(@constCast(&edge_coords)));
+        set_next_pixel(Coord{ .x = c_idx, .y = 0}, avgPixels(@constCast(&edge_coords), @constCast(&topKernel)));
         edge_coords = [6]Coord{
-            .{ .x = c_idx - 1, .y = maxY },
-            .{ .x = c_idx, .y = maxY },
-            .{ .x = c_idx + 1, .y = maxY },
             .{ .x = c_idx - 1, .y = maxY - 1 },
             .{ .x = c_idx, .y = maxY - 1 },
-            .{ .x = c_idx + 1, .y = maxY - 1 }
+            .{ .x = c_idx + 1, .y = maxY - 1 },
+            .{ .x = c_idx - 1, .y = maxY },
+            .{ .x = c_idx, .y = maxY },
+            .{ .x = c_idx + 1, .y = maxY }
         };
-        set_next_pixel(Coord{ .x = c_idx, .y = maxY}, avgPixels(@constCast(&edge_coords)));
+        set_next_pixel(Coord{ .x = c_idx, .y = maxY}, avgPixels(@constCast(&edge_coords), @constCast(&bottomKernel)));
     }
     // left & right
+    var leftKernel = [_]f32{ kernel[3], kernel[4], kernel[5], kernel[6], kernel[7], kernel[8] };
+    var rightKernel = [_]f32{ kernel[0], kernel[1], kernel[2], kernel[3], kernel[4], kernel[5] };
     for (1..maxY) |r_idx| {
         var edge_coords = [6]Coord{
             .{ .x = 0, .y = r_idx - 1 },
@@ -190,38 +216,68 @@ export fn blur() void {
             .{ .x = 1, .y = r_idx },
             .{ .x = 1, .y = r_idx + 1 }
         };
-        set_next_pixel(Coord{ .x = 0, .y = r_idx}, avgPixels(@constCast(&edge_coords)));
+        set_next_pixel(Coord{ .x = 0, .y = r_idx}, avgPixels(@constCast(&edge_coords), @constCast(&leftKernel)));
         edge_coords = [6]Coord{
-            .{ .x = maxX, .y = r_idx - 1 },
-            .{ .x = maxX, .y = r_idx },
-            .{ .x = maxX, .y = r_idx + 1 },
             .{ .x = maxX - 1, .y = r_idx - 1 },
             .{ .x = maxX - 1, .y = r_idx },
-            .{ .x = maxX - 1, .y = r_idx + 1 }
+            .{ .x = maxX - 1, .y = r_idx + 1 },
+            .{ .x = maxX, .y = r_idx - 1 },
+            .{ .x = maxX, .y = r_idx },
+            .{ .x = maxX, .y = r_idx + 1 }
         };
-        set_next_pixel(Coord{ .x = maxX, .y = r_idx}, avgPixels(@constCast(&edge_coords)));
+        set_next_pixel(Coord{ .x = maxX, .y = r_idx}, avgPixels(@constCast(&edge_coords), @constCast(&rightKernel)));
     }
 
     // middle part
     for(1..maxY) |r_idx| {
         for(1..maxX) |c_idx| {
             const coords = [9]Coord{
-                .{ .x = c_idx - 1, .y = r_idx - 1},
-                .{ .x = c_idx - 1, .y = r_idx},
-                .{ .x = c_idx - 1, .y = r_idx + 1},
-                .{ .x = c_idx, .y = r_idx - 1},
-                .{ .x = c_idx, .y = r_idx},
-                .{ .x = c_idx, .y = r_idx + 1},
-                .{ .x = c_idx + 1, .y = r_idx - 1},
-                .{ .x = c_idx + 1, .y = r_idx},
-                .{ .x = c_idx + 1, .y = r_idx + 1}
+                .{ .y = r_idx - 1, .x = c_idx - 1},
+                .{ .y = r_idx - 1, .x = c_idx},
+                .{ .y = r_idx - 1, .x = c_idx + 1},
+                .{ .y = r_idx, .x = c_idx - 1},
+                .{ .y = r_idx, .x = c_idx},
+                .{ .y = r_idx, .x = c_idx + 1},
+                .{ .y = r_idx + 1, .x = c_idx - 1},
+                .{ .y = r_idx + 1, .x = c_idx},
+                .{ .y = r_idx + 1, .x = c_idx + 1}
             };
-            set_next_pixel(Coord{ .x = c_idx, .y = r_idx}, avgPixels(@constCast(&coords)));
+            set_next_pixel(Coord{ .x = c_idx, .y = r_idx}, avgPixels(@constCast(&coords), kernel));
         }
     }
 
     swap_states();
     draw_pixels();
+}
+
+export fn blur() void {
+    const kernel = [_]f32{
+        0.1, 0.1, 0.1,
+        0.1, 0.2, 0.1,
+        0.1, 0.1, 0.1
+    };
+
+    convolution(@constCast(&kernel));
+}
+
+export fn sharpen() void {
+    const kernel = [_]f32{
+        0.0, -1.0, 0.0,
+        -1.0, 5.0, -1.0,
+        0.0, -1.0, 0.0
+    };
+
+    convolution(@constCast(&kernel));
+}
+
+export fn edge_detection() void {
+    const kernel = [_]f32{
+        -1.0, -1.0, -1.0,
+        -1.0, 8.0, -1.0,
+        -1.0, -1.0, -1.0
+    };
+
+    convolution(@constCast(&kernel));
 }
 
 export fn draw_pixels() void {
