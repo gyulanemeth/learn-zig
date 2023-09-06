@@ -6,6 +6,7 @@ const Coord = struct { x: u32, y: u32 };
 
 extern fn drawPixel(r_idx: usize, c_idx: usize, r: u8, g: u8, b: u8, a: u8) void;
 extern fn drawPixelsDone() void;
+extern fn memoryAddress(address: usize) void;
 
 var full_state: ImageData = undefined;
 var state_1: ImageData = undefined;
@@ -14,10 +15,10 @@ var state_2: ImageData = undefined;
 var current_state: ImageData = undefined;
 var next_state: ImageData = undefined;
 
-export fn init(n_rows: u32, n_cols: u32) void {
+export fn init(n_rows: u32, n_cols: u32) callconv(.C) ?[*]u8 {
     const num_color_values = n_rows * n_cols * 4; // 4x -> r, g, b, a;
     const memory_size = num_color_values * 2; // 2x -> current_state, next_state
-    var memory = std.heap.page_allocator.alloc(u8, memory_size) catch unreachable;
+    var memory = std.heap.wasm_allocator.alloc(u8, memory_size) catch unreachable;
 
     full_state = ImageData{ .n_rows = n_rows, .n_cols = n_cols, .data = memory };
     state_1 = ImageData{ .n_rows = full_state.n_rows, .n_cols = full_state.n_cols, .data = full_state.data[0..num_color_values] };
@@ -25,10 +26,16 @@ export fn init(n_rows: u32, n_cols: u32) void {
 
     current_state = state_1;
     next_state = state_2;
+
+    return memory.ptr;
+}
+
+export fn currentImgAddress() callconv(.C) [*]u8 {
+    return current_state.data.ptr;
 }
 
 export fn destroy() void {
-    std.heap.page_allocator.free(full_state.data);
+    std.heap.wasm_allocator.free(full_state.data);
 }
 
 fn swap_states() void {
@@ -97,7 +104,7 @@ fn avgPixels(pixelCoords: []Coord, kernel: []f32) Pixel {
     var avgR: f32 = 0;
     var avgG: f32 = 0;
     var avgB: f32 = 0;
-    var avgA: u16 = 255; // 255 alpha is temporal
+    var avgA: u8 = 255; // 255 alpha is temporal
 
     for (pixelCoords, 0..) |coord, idx| {
         const actPixel: Pixel = get_pixel(coord.y, coord.x);
@@ -112,29 +119,17 @@ fn avgPixels(pixelCoords: []Coord, kernel: []f32) Pixel {
         avgB += actB * actKernel;
     }
 
-    if (avgR < 0) {
-        avgR = 0.0;
-    } else if (avgR > 255) {
-        avgR = 255.0;
-    }
 
-    if (avgG < 0) {
-        avgG = 0.0;
-    } else if (avgG > 255) {
-        avgG = 255.0;
-    }
 
-    if (avgB < 0) {
-        avgB = 0.0;
-    } else if (avgB > 255) {
-        avgB = 255.0;
-    }
+    const r: u8 = if (avgR > 255) 255 else if (avgR < 0) 0 else @intFromFloat(avgR);
+    const g: u8 = if (avgG > 255) 255 else if (avgG < 0) 0 else @intFromFloat(avgG);
+    const b: u8 = if (avgB > 255) 255 else if (avgB < 0) 0 else @intFromFloat(avgB);
 
     return Pixel{
-        .r = @intFromFloat(avgR),
-        .g = @intFromFloat(avgG),
-        .b = @intFromFloat(avgB),
-        .a = @intCast(avgA)
+        .r = r,
+        .g = g,
+        .b = b,
+        .a = avgA
     };
 }
 
@@ -247,7 +242,6 @@ fn convolution(kernel: []f32) void {
     }
 
     swap_states();
-    draw_pixels();
 }
 
 export fn blur() void {

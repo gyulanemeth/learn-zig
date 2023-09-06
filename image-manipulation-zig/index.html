@@ -72,6 +72,7 @@
 
                 let drawPixelCb = () => {}
                 let drawPixelsDoneCb = () => {}
+
                 const importObject = {
                     env: {
                         drawPixel: (rIdx, cIdx, r, g, b, a) => {
@@ -89,7 +90,7 @@
                 console.log('wasm load', time3 - time2)
 
                 const imgData = context.getImageData(0, 0, canvas.width, canvas.height);
-                wasmIface.init(imgData.height, imgData.width)
+                const imgMemoryAddress = wasmIface.init(imgData.height, imgData.width)
                 const time4 = performance.now()
                 console.log('wasm - allocate memory', time4 - time3)
 
@@ -227,66 +228,42 @@
                     const start = performance.now()
                     const imgData = context.getImageData(0, 0, canvas.width, canvas.height);
 
-                    const rowLength = imgData.width * 4
-                    
-                    drawPixelCb = (rIdx, cIdx, r, g, b, a) => {
-                        const redIdx = rIdx * rowLength + cIdx * 4
-                        imgData.data[redIdx] = r
-                        imgData.data[redIdx + 1] = g
-                        imgData.data[redIdx + 2] = b
-                        imgData.data[redIdx + 3] = a
-                    }
-
-                    drawPixelsDoneCb = () => {
-                        context.putImageData(imgData, 0, 0)
-                        const execSpan = document.getElementById('exec-time')
-                        execSpan.innerHTML = performance.now() - start
-                    }
                     wasmIface.blur()
+                    const addr = wasmIface.currentImgAddress()
+                    const imgArray = new Uint8ClampedArray(wasmIface.memory.buffer, addr, imgData.data.length)
+
+                    const newImgData = new ImageData(imgArray, imgData.width, imgData.height)
+                    context.putImageData(newImgData, 0, 0)
+                    const execSpan = document.getElementById('exec-time')
+                    execSpan.innerHTML = performance.now() - start
                 }
 
                 function sharpen() {
                     const start = performance.now()
                     const imgData = context.getImageData(0, 0, canvas.width, canvas.height);
 
-                    const rowLength = imgData.width * 4
-                    
-                    drawPixelCb = (rIdx, cIdx, r, g, b, a) => {
-                        const redIdx = rIdx * rowLength + cIdx * 4
-                        imgData.data[redIdx] = r
-                        imgData.data[redIdx + 1] = g
-                        imgData.data[redIdx + 2] = b
-                        imgData.data[redIdx + 3] = a
-                    }
-
-                    drawPixelsDoneCb = () => {
-                        context.putImageData(imgData, 0, 0)
-                        const execSpan = document.getElementById('exec-time')
-                        execSpan.innerHTML = performance.now() - start
-                    }
                     wasmIface.sharpen()
+                    const addr = wasmIface.currentImgAddress()
+                    const imgArray = new Uint8ClampedArray(wasmIface.memory.buffer, addr, imgData.data.length)
+
+                    const newImgData = new ImageData(imgArray, imgData.width, imgData.height)
+                    context.putImageData(newImgData, 0, 0)
+                    const execSpan = document.getElementById('exec-time')
+                    execSpan.innerHTML = performance.now() - start
                 }
 
                 function edgeDetection() {
                     const start = performance.now()
                     const imgData = context.getImageData(0, 0, canvas.width, canvas.height);
 
-                    const rowLength = imgData.width * 4
-                    
-                    drawPixelCb = (rIdx, cIdx, r, g, b, a) => {
-                        const redIdx = rIdx * rowLength + cIdx * 4
-                        imgData.data[redIdx] = r
-                        imgData.data[redIdx + 1] = g
-                        imgData.data[redIdx + 2] = b
-                        imgData.data[redIdx + 3] = a
-                    }
-
-                    drawPixelsDoneCb = () => {
-                        context.putImageData(imgData, 0, 0)
-                        const execSpan = document.getElementById('exec-time')
-                        execSpan.innerHTML = performance.now() - start
-                    }
                     wasmIface.edge_detection()
+                    const addr = wasmIface.currentImgAddress()
+                    const imgArray = new Uint8ClampedArray(wasmIface.memory.buffer, addr, imgData.data.length)
+
+                    const newImgData = new ImageData(imgArray, imgData.width, imgData.height)
+                    context.putImageData(newImgData, 0, 0)
+                    const execSpan = document.getElementById('exec-time')
+                    execSpan.innerHTML = performance.now() - start
                 }
 
                 function convolution(kernel) {
