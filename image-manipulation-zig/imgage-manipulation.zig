@@ -4,9 +4,7 @@ const ImageData = struct { n_rows: u32, n_cols: u32, data: []u8 };
 const Pixel = struct { r: u8, g: u8, b: u8, a: u8 };
 const Coord = struct { x: u32, y: u32 };
 
-extern fn drawPixel(r_idx: usize, c_idx: usize, r: u8, g: u8, b: u8, a: u8) void;
-extern fn drawPixelsDone() void;
-extern fn memoryAddress(address: usize) void;
+extern fn debug(r_idx: usize, c_idx: usize) void;
 
 var full_state: ImageData = undefined;
 var state_1: ImageData = undefined;
@@ -15,7 +13,7 @@ var state_2: ImageData = undefined;
 var current_state: ImageData = undefined;
 var next_state: ImageData = undefined;
 
-export fn init(n_rows: u32, n_cols: u32) callconv(.C) ?[*]u8 {
+export fn init(n_rows: u32, n_cols: u32) callconv(.C) [*]u8 {
     const num_color_values = n_rows * n_cols * 4; // 4x -> r, g, b, a;
     const memory_size = num_color_values * 2; // 2x -> current_state, next_state
     var memory = std.heap.wasm_allocator.alloc(u8, memory_size) catch unreachable;
@@ -47,6 +45,7 @@ fn swap_states() void {
 fn get_pixel(r_idx: usize, c_idx: usize) Pixel {
     const red_idx = (r_idx * current_state.n_cols + c_idx) * 4;
 
+
     return Pixel{
         .r = current_state.data[red_idx],
         .g = current_state.data[red_idx + 1],
@@ -56,7 +55,7 @@ fn get_pixel(r_idx: usize, c_idx: usize) Pixel {
 }
 
 export fn set_pixel(r_idx: usize, c_idx: usize, r: u8, g: u8, b: u8, a: u8) void {
-    const red_idx = (r_idx * current_state.n_cols + c_idx) * 4;
+    const red_idx: usize = (r_idx * current_state.n_cols + c_idx) * 4;
     current_state.data[red_idx] = r;
     current_state.data[red_idx + 1] = g;
     current_state.data[red_idx + 2] = b;
@@ -77,9 +76,9 @@ export fn invert() void {
         next_state.data[idx] = 255 - current_state.data[idx];
         next_state.data[idx + 1] = 255 - current_state.data[idx + 1];
         next_state.data[idx + 2] = 255 - current_state.data[idx + 2];
+        next_state.data[idx + 3] = current_state.data[idx + 3];
     }
     swap_states();
-    draw_pixels();
 }
 
 export fn to_grayscale() void {
@@ -95,12 +94,12 @@ export fn to_grayscale() void {
         next_state.data[idx] = avg8;
         next_state.data[idx + 1] = avg8;
         next_state.data[idx + 2] = avg8;
+        next_state.data[idx + 3] = current_state.data[idx + 3];
     }
     swap_states();
-    draw_pixels();
 }
 
-fn avgPixels(pixelCoords: []Coord, kernel: []f32) Pixel {
+fn avg_pixels(pixelCoords: []Coord, kernel: []f32) Pixel {
     var avgR: f32 = 0;
     var avgG: f32 = 0;
     var avgB: f32 = 0;
@@ -134,8 +133,8 @@ fn avgPixels(pixelCoords: []Coord, kernel: []f32) Pixel {
 }
 
 fn convolution(kernel: []f32) void {
-    const maxX = current_state.n_rows - 1;
-    const maxY = current_state.n_cols - 1;
+    const maxX = current_state.n_cols - 1;
+    const maxY = current_state.n_rows - 1;
 
     // corners
     // top-left
@@ -146,7 +145,7 @@ fn convolution(kernel: []f32) void {
         .{ .x = 1, .y = 1 }
     };
     var cornerKernel = [_]f32{ kernel[4], kernel[7], kernel[5], kernel[8] };
-    set_next_pixel(Coord{ .x = 0, .y = 0}, avgPixels(@constCast(&corner_coords), @constCast(&cornerKernel)));
+    set_next_pixel(Coord{ .x = 0, .y = 0}, avg_pixels(@constCast(&corner_coords), @constCast(&cornerKernel)));
     // top-right
     corner_coords = [4]Coord{
         .{ .x = maxX, .y = 0 },
@@ -155,7 +154,7 @@ fn convolution(kernel: []f32) void {
         .{ .x = maxX - 1, .y = 1 }
     };
     cornerKernel = [_]f32{ kernel[4], kernel[7], kernel[3], kernel[6] };
-    set_next_pixel(Coord{ .x = maxX, .y = 0 }, avgPixels(@constCast(&corner_coords), @constCast(&cornerKernel)));
+    set_next_pixel(Coord{ .x = maxX, .y = 0 }, avg_pixels(@constCast(&corner_coords), @constCast(&cornerKernel)));
     // bottom-left
     corner_coords = [4]Coord{
         .{ .x = 0, .y = maxY },
@@ -164,7 +163,7 @@ fn convolution(kernel: []f32) void {
         .{ .x = 1, .y = maxY - 1 }
     };
     cornerKernel = [_]f32{ kernel[4], kernel[1], kernel[5], kernel[2] };
-    set_next_pixel(Coord{ .x = 0, .y = maxY }, avgPixels(@constCast(&corner_coords), @constCast(&cornerKernel)));
+    set_next_pixel(Coord{ .x = 0, .y = maxY }, avg_pixels(@constCast(&corner_coords), @constCast(&cornerKernel)));
     // bottom-right
     corner_coords = [4]Coord{
         .{ .x = maxX, .y = maxY },
@@ -173,7 +172,7 @@ fn convolution(kernel: []f32) void {
         .{ .x = maxX - 1, .y = maxY - 1 }
     };
     cornerKernel = [_]f32{ kernel[4], kernel[1], kernel[3], kernel[0] };
-    set_next_pixel(Coord{ .x = maxX, .y = maxY}, avgPixels(@constCast(&corner_coords), @constCast(&cornerKernel)));
+    set_next_pixel(Coord{ .x = maxX, .y = maxY}, avg_pixels(@constCast(&corner_coords), @constCast(&cornerKernel)));
 
     // edges
     // top & bottom
@@ -188,7 +187,7 @@ fn convolution(kernel: []f32) void {
             .{ .x = c_idx, .y = 1 },
             .{ .x = c_idx + 1, .y = 1 }
         };
-        set_next_pixel(Coord{ .x = c_idx, .y = 0}, avgPixels(@constCast(&edge_coords), @constCast(&topKernel)));
+        set_next_pixel(Coord{ .x = c_idx, .y = 0}, avg_pixels(@constCast(&edge_coords), @constCast(&topKernel)));
         edge_coords = [6]Coord{
             .{ .x = c_idx - 1, .y = maxY - 1 },
             .{ .x = c_idx, .y = maxY - 1 },
@@ -197,7 +196,7 @@ fn convolution(kernel: []f32) void {
             .{ .x = c_idx, .y = maxY },
             .{ .x = c_idx + 1, .y = maxY }
         };
-        set_next_pixel(Coord{ .x = c_idx, .y = maxY}, avgPixels(@constCast(&edge_coords), @constCast(&bottomKernel)));
+        set_next_pixel(Coord{ .x = c_idx, .y = maxY}, avg_pixels(@constCast(&edge_coords), @constCast(&bottomKernel)));
     }
     // left & right
     var leftKernel = [_]f32{ kernel[3], kernel[4], kernel[5], kernel[6], kernel[7], kernel[8] };
@@ -211,7 +210,7 @@ fn convolution(kernel: []f32) void {
             .{ .x = 1, .y = r_idx },
             .{ .x = 1, .y = r_idx + 1 }
         };
-        set_next_pixel(Coord{ .x = 0, .y = r_idx}, avgPixels(@constCast(&edge_coords), @constCast(&leftKernel)));
+        set_next_pixel(Coord{ .x = 0, .y = r_idx}, avg_pixels(@constCast(&edge_coords), @constCast(&leftKernel)));
         edge_coords = [6]Coord{
             .{ .x = maxX - 1, .y = r_idx - 1 },
             .{ .x = maxX - 1, .y = r_idx },
@@ -220,7 +219,7 @@ fn convolution(kernel: []f32) void {
             .{ .x = maxX, .y = r_idx },
             .{ .x = maxX, .y = r_idx + 1 }
         };
-        set_next_pixel(Coord{ .x = maxX, .y = r_idx}, avgPixels(@constCast(&edge_coords), @constCast(&rightKernel)));
+        set_next_pixel(Coord{ .x = maxX, .y = r_idx}, avg_pixels(@constCast(&edge_coords), @constCast(&rightKernel)));
     }
 
     // middle part
@@ -237,7 +236,7 @@ fn convolution(kernel: []f32) void {
                 .{ .y = r_idx + 1, .x = c_idx},
                 .{ .y = r_idx + 1, .x = c_idx + 1}
             };
-            set_next_pixel(Coord{ .x = c_idx, .y = r_idx}, avgPixels(@constCast(&coords), kernel));
+            set_next_pixel(Coord{ .x = c_idx, .y = r_idx}, avg_pixels(@constCast(&coords), kernel));
         }
     }
 
@@ -272,17 +271,4 @@ export fn edge_detection() void {
     };
 
     convolution(@constCast(&kernel));
-}
-
-export fn draw_pixels() void {
-    var idx: u32 = 0;
-    while (idx < current_state.data.len) : (idx += 4) {
-        const curr_pixel_values = current_state.data[idx .. idx + 4];
-
-        const px_idx = idx / 4;
-        const r_idx: usize = px_idx / current_state.n_cols;
-        const c_idx: usize = @mod(px_idx, current_state.n_cols);
-        drawPixel(r_idx, c_idx, curr_pixel_values[0], curr_pixel_values[1], curr_pixel_values[2], curr_pixel_values[3]);
-    }
-    drawPixelsDone();
 }
