@@ -1,0 +1,13 @@
+<script>
+    const importObject = {
+        console: {
+            log(arg) {
+                console.log(arg);
+            }
+        }
+    }
+
+    WebAssembly.instantiateStreaming(fetch("03-import.wasm"), importObject).then((obj) => {
+        obj.instance.exports.logIt();
+    })
+</script>

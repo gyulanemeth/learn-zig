@@ -1,0 +1,5 @@
+<script>
+    WebAssembly.instantiateStreaming(fetch("01-add.wasm")).then((obj) => {
+        console.log(obj.instance.exports.add(1, 2)) // "3"
+    })
+</script>

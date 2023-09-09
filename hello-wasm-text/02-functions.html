@@ -1,0 +1,5 @@
+<script>
+    WebAssembly.instantiateStreaming(fetch("02-functions.wasm")).then((obj) => {
+        console.log(obj.instance.exports.getAnswerPlus1())
+    })
+</script>
