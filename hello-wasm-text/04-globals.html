@@ -1,0 +1,15 @@
+<script>
+    const global = new WebAssembly.Global({ value: "i32", mutable: true }, 42)
+    const importObject = {
+        test: {
+            global
+        }
+    }
+
+
+    WebAssembly.instantiateStreaming(fetch("04-globals.wasm"), importObject).then((obj) => {
+        obj.instance.exports.incGlobal()
+        console.log(obj.instance.exports.getGlobal())
+        console.log(importObject.test.global.value)
+    })
+</script>
