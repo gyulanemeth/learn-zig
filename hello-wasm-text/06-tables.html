@@ -1,0 +1,7 @@
+<script>
+    WebAssembly.instantiateStreaming(fetch('./06-tables.wasm')).then(result => {
+        console.log(result.instance.exports.callByIndex(0))
+        console.log(result.instance.exports.callByIndex(1))
+        console.log(result.instance.exports.callByIndex(2)) // runtime error
+    })
+</script>
