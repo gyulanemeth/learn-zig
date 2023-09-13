@@ -241,11 +241,77 @@ function createImageManipulationFunctions(context, height, width) {
         convolution(kernel)
     }
 
+    function emboss() {
+        const kernel = [
+            -2, -1, 0,
+            -1, 1, 1,
+            0, 1, 2
+        ]
+
+        convolution(kernel)
+    }
+
+    function motionBlur() {
+        const kernel = [
+            0.33, 0, 0,
+            0.34, 0, 0,
+            0.33, 0, 0
+        ]
+
+        convolution(kernel)
+    }
+
+    function edgeDetectionPerwittHorizontal() {
+        const kernel = [
+            -1, 0, 1,
+            -1, 0, 1,
+            -1, 0, 1
+        ]
+
+        convolution(kernel)
+    }
+
+    function edgeDetectionPerwittVertical() {
+        const kernel = [
+            -1, -1, -1,
+            0, 0, 0,
+            1, 1, 1
+        ]
+
+        convolution(kernel)
+    }
+
+    function edgeDetectionSobelHorizontal() {
+        const kernel = [
+            -1, 0, 1,
+            -2, 0, 2,
+            -1, 0, 1
+        ]
+
+        convolution(kernel)
+    }
+
+    function edgeDetectionSobelVertical() {
+        const kernel = [
+            -1, -2, -1,
+            0, 0, 0,
+            1, 2, 1
+        ]
+
+        convolution(kernel)
+    }
+
     return {
         invert,
         toGrayscale,
         blur,
         sharpen,
-        edgeDetection
+        edgeDetection,
+        emboss,
+        motionBlur,
+        edgeDetectionPerwittHorizontal,
+        edgeDetectionPerwittVertical,
+        edgeDetectionSobelHorizontal,
+        edgeDetectionSobelVertical
     }
 }

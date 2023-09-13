@@ -6,7 +6,7 @@ async function createWasmWrapper(context, height, width) {
     }
 
     let start = performance.now()
-    const results = await WebAssembly.instantiateStreaming(fetch("./imgage-manipulation.wasm"), importObject)
+    const results = await WebAssembly.instantiateStreaming(fetch("./image-manipulation.wasm"), importObject)
     const wasmIface = results.instance.exports
     let end = performance.now()
     console.log('wasm load', end - start)
@@ -42,6 +42,12 @@ async function createWasmWrapper(context, height, width) {
         toGrayscale: () => callWasmFunction('to_grayscale'),
         blur: () => callWasmFunction('blur'),
         sharpen: () => callWasmFunction('sharpen'),
-        edgeDetection: () => callWasmFunction('edge_detection')
+        edgeDetection: () => callWasmFunction('edge_detection'),
+        emboss: () => callWasmFunction('emboss'),
+        motionBlur: () => callWasmFunction('motion_blur'),
+        edgeDetectionPerwittHorizontal: () => callWasmFunction('edge_detection_perwitt_horizontal'),
+        edgeDetectionPerwittVertical: () => callWasmFunction('edge_detection_perwitt_vertical'),
+        edgeDetectionSobelHorizontal: () => callWasmFunction('edge_detection_sobel_horizontal'),
+        edgeDetectionSobelVertical: () => callWasmFunction('edge_detection_sobel_vertical')
     }
 }

@@ -272,3 +272,64 @@ export fn edge_detection() void {
 
     convolution(@constCast(&kernel));
 }
+
+
+export fn emboss() void {
+    const kernel = [_]f32{
+        -2.0, -1.0, 0.0,
+        -1.0, 1.0, 1.0,
+        0.0, 1.0, 2.0
+    };
+
+    convolution(@constCast(&kernel));
+}
+
+export fn motion_blur() void {
+    const kernel = [_]f32{
+        0.33, 0.0, 0.0,
+        0.34, 0.0, 0.0,
+        0.33, 0.0, 0.0
+    };
+
+    convolution(@constCast(&kernel));
+}
+
+export fn edge_detection_perwitt_horizontal() void {
+    const kernel = [_]f32{
+        -1.0, 0.0, 1.0,
+        -1.0, 0.0, 1.0,
+        -1.0, 0.0, 1.0
+    };
+
+    convolution(@constCast(&kernel));
+}
+
+export fn edge_detection_perwitt_vertical() void {
+    const kernel = [_]f32{
+        -1.0, -1.0, -1.0,
+        0.0, 0.0, 0.0,
+        1.0, 1.0, 1.0
+    };
+
+    convolution(@constCast(&kernel));
+}
+
+export fn edge_detection_sobel_horizontal() void {
+    const kernel = [_]f32{
+        -1.0, 0.0, 1.0,
+        -2.0, 0.0, 2.0,
+        -1.0, 0.0, 1.0
+    };
+
+    convolution(@constCast(&kernel));
+}
+
+export fn edge_detection_sobel_vertical() void {
+    const kernel = [_]f32{
+        -1.0, -2.0, -1.0,
+        0.0, 0.0, 0.0,
+        1.0, 2.0, 1.0
+    };
+
+    convolution(@constCast(&kernel));
+}

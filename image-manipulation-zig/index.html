@@ -21,6 +21,12 @@
                     <td><button id="blur-js">Blur</button></td>
                     <td><button id="sharpen-js">Sharpen</button></td>
                     <td><button id="edge-js">Edge detection</button></td>
+                    <td><button id="emboss-js">Emboss</button></td>
+                    <td><button id="motionBlur-js">Motion blur</button></td>
+                    <td><button id="edgeDetectionPerwittHorizontal-js">Edge Detection Perwitt Horizontal</button></td>
+                    <td><button id="edgeDetectionPerwittVertical-js">Edge Detection Perwitt Vertical</button></td>
+                    <td><button id="edgeDetectionSobelHorizontal-js">Edge Detection Sobel Horizontal</button></td>
+                    <td><button id="edgeDetectionSobelVertical-js">Edge Detection Sobel Vertical</button></td>
                 </tr>
                 <tr>
                     <td>Zig WASM</td>
@@ -29,6 +35,12 @@
                     <td><button id="blur-zig">Blur</button></td>
                     <td><button id="sharpen-zig">Sharpen</button></td>
                     <td><button id="edge-zig">Edge detection</button></td>
+                    <td><button id="emboss-zig">Emboss</button></td>
+                    <td><button id="motionBlur-zig">Motion blur</button></td>
+                    <td><button id="edgeDetectionPerwittHorizontal-zig">Edge Detection Perwitt Horizontal</button></td>
+                    <td><button id="edgeDetectionPerwittVertical-zig">Edge Detection Perwitt Vertical</button></td>
+                    <td><button id="edgeDetectionSobelHorizontal-zig">Edge Detection Sobel Horizontal</button></td>
+                    <td><button id="edgeDetectionSobelVertical-zig">Edge Detection Sobel Vertical</button></td>
                 </tr>
             </table>
         </span>
@@ -67,8 +79,8 @@
             async function main() {
                 const start = performance.now()
 
-                // await loadImgToCanvas('./lena.png')
-                await loadImgToCanvas('./valencia.jpeg')
+                await loadImgToCanvas('./lena.png')
+                // await loadImgToCanvas('./valencia.jpeg')
                 const end = performance.now()
                 console.log('image to canvas', start - end)
 
@@ -82,12 +94,24 @@
                 document.getElementById('blur-js').onclick = jsAlgos.blur
                 document.getElementById('sharpen-js').onclick = jsAlgos.sharpen
                 document.getElementById('edge-js').onclick = jsAlgos.edgeDetection
+                document.getElementById('emboss-js').onclick = jsAlgos.emboss
+                document.getElementById('motionBlur-js').onclick = jsAlgos.motionBlur
+                document.getElementById('edgeDetectionPerwittHorizontal-js').onclick = jsAlgos.edgeDetectionPerwittHorizontal
+                document.getElementById('edgeDetectionPerwittVertical-js').onclick = jsAlgos.edgeDetectionPerwittVertical
+                document.getElementById('edgeDetectionSobelHorizontal-js').onclick = jsAlgos.edgeDetectionSobelHorizontal
+                document.getElementById('edgeDetectionSobelVertical-js').onclick = jsAlgos.edgeDetectionSobelVertical
 
                 document.getElementById('invert-zig').onclick = wasmAlgos.invert
                 document.getElementById('grayscale-zig').onclick = wasmAlgos.toGrayscale
                 document.getElementById('blur-zig').onclick = wasmAlgos.blur
                 document.getElementById('sharpen-zig').onclick = wasmAlgos.sharpen
                 document.getElementById('edge-zig').onclick = wasmAlgos.edgeDetection
+                document.getElementById('emboss-zig').onclick = wasmAlgos.emboss
+                document.getElementById('motionBlur-zig').onclick = wasmAlgos.motionBlur
+                document.getElementById('edgeDetectionPerwittHorizontal-zig').onclick = wasmAlgos.edgeDetectionPerwittHorizontal
+                document.getElementById('edgeDetectionPerwittVertical-zig').onclick = wasmAlgos.edgeDetectionPerwittVertical
+                document.getElementById('edgeDetectionSobelHorizontal-zig').onclick = wasmAlgos.edgeDetectionSobelHorizontal
+                document.getElementById('edgeDetectionSobelVertical-zig').onclick = wasmAlgos.edgeDetectionSobelVertical
             }
             main()
         </script>
