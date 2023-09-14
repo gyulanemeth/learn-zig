@@ -27,6 +27,7 @@
                     <td><button id="edgeDetectionPerwittVertical-js">Edge Detection Perwitt Vertical</button></td>
                     <td><button id="edgeDetectionSobelHorizontal-js">Edge Detection Sobel Horizontal</button></td>
                     <td><button id="edgeDetectionSobelVertical-js">Edge Detection Sobel Vertical</button></td>
+                    <td><button id="rotateHueBy10Deg-js">Rotate Hue by 10 Deg (36x)</button></td>
                 </tr>
                 <tr>
                     <td>Zig WASM</td>
@@ -100,6 +101,12 @@
                 document.getElementById('edgeDetectionPerwittVertical-js').onclick = jsAlgos.edgeDetectionPerwittVertical
                 document.getElementById('edgeDetectionSobelHorizontal-js').onclick = jsAlgos.edgeDetectionSobelHorizontal
                 document.getElementById('edgeDetectionSobelVertical-js').onclick = jsAlgos.edgeDetectionSobelVertical
+                document.getElementById('rotateHueBy10Deg-js').onclick = async () => {
+                  for (let idx = 0; idx < 36; idx += 1) {
+                    jsAlgos.rotateHueBy10Deg()
+                    await new Promise(resolve => setTimeout(resolve, 100))
+                  }
+                }
 
                 document.getElementById('invert-zig').onclick = wasmAlgos.invert
                 document.getElementById('grayscale-zig').onclick = wasmAlgos.toGrayscale
