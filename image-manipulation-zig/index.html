@@ -42,6 +42,7 @@
                     <td><button id="edgeDetectionPerwittVertical-zig">Edge Detection Perwitt Vertical</button></td>
                     <td><button id="edgeDetectionSobelHorizontal-zig">Edge Detection Sobel Horizontal</button></td>
                     <td><button id="edgeDetectionSobelVertical-zig">Edge Detection Sobel Vertical</button></td>
+                    <td><button id="rotateHueBy10Deg-zig">Rotate Hue by 10 Deg (36x)</button></td>
                 </tr>
             </table>
         </span>
@@ -119,6 +120,12 @@
                 document.getElementById('edgeDetectionPerwittVertical-zig').onclick = wasmAlgos.edgeDetectionPerwittVertical
                 document.getElementById('edgeDetectionSobelHorizontal-zig').onclick = wasmAlgos.edgeDetectionSobelHorizontal
                 document.getElementById('edgeDetectionSobelVertical-zig').onclick = wasmAlgos.edgeDetectionSobelVertical
+                document.getElementById('rotateHueBy10Deg-zig').onclick = async () => {
+                  for (let idx = 0; idx < 36; idx += 1) {
+                    wasmAlgos.rotateHueBy10Deg()
+                    await new Promise(resolve => setTimeout(resolve, 100))
+                  }
+                }
             }
             main()
         </script>

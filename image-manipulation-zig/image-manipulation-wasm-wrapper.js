@@ -48,6 +48,8 @@ async function createWasmWrapper(context, height, width) {
         edgeDetectionPerwittHorizontal: () => callWasmFunction('edge_detection_perwitt_horizontal'),
         edgeDetectionPerwittVertical: () => callWasmFunction('edge_detection_perwitt_vertical'),
         edgeDetectionSobelHorizontal: () => callWasmFunction('edge_detection_sobel_horizontal'),
-        edgeDetectionSobelVertical: () => callWasmFunction('edge_detection_sobel_vertical')
+        edgeDetectionSobelVertical: () => callWasmFunction('edge_detection_sobel_vertical'),
+
+        rotateHueBy10Deg: () => callWasmFunction('rotate_hue_by_10_deg')
     }
 }

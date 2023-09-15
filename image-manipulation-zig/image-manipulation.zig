@@ -1,7 +1,8 @@
 const std = @import("std");
 
 const ImageData = struct { n_rows: u32, n_cols: u32, data: []u8 };
-const Pixel = struct { r: u8, g: u8, b: u8, a: u8 };
+const RgbPixel = struct { r: u8, g: u8, b: u8, a: u8 };
+const HslPixel = struct { h: f32, s: f32, l: f32, a: u8 };
 const Coord = struct { x: u32, y: u32 };
 
 extern fn debug(r_idx: usize, c_idx: usize) void;
@@ -42,11 +43,11 @@ fn swap_states() void {
     next_state = tmp;
 }
 
-fn get_pixel(r_idx: usize, c_idx: usize) Pixel {
+fn get_pixel(r_idx: usize, c_idx: usize) RgbPixel {
     const red_idx = (r_idx * current_state.n_cols + c_idx) * 4;
 
 
-    return Pixel{
+    return RgbPixel{
         .r = current_state.data[red_idx],
         .g = current_state.data[red_idx + 1],
         .b = current_state.data[red_idx + 2],
@@ -62,7 +63,7 @@ export fn set_pixel(r_idx: usize, c_idx: usize, r: u8, g: u8, b: u8, a: u8) void
     current_state.data[red_idx + 3] = a;
 }
 
-fn set_next_pixel(coord: Coord, pixel: Pixel) void {
+fn set_next_pixel(coord: Coord, pixel: RgbPixel) void {
     const red_idx = (coord.y * next_state.n_cols + coord.x) * 4;
     next_state.data[red_idx] = pixel.r;
     next_state.data[red_idx + 1] = pixel.g;
@@ -99,19 +100,19 @@ export fn to_grayscale() void {
     swap_states();
 }
 
-fn avg_pixels(pixelCoords: []Coord, kernel: []f32) Pixel {
+fn avg_pixels(pixelCoords: []Coord, kernel: []f32) RgbPixel {
     var avgR: f32 = 0;
     var avgG: f32 = 0;
     var avgB: f32 = 0;
     var avgA: u8 = 255; // 255 alpha is temporal
 
     for (pixelCoords, 0..) |coord, idx| {
-        const actPixel: Pixel = get_pixel(coord.y, coord.x);
+        const actRgbPixel: RgbPixel = get_pixel(coord.y, coord.x);
         const actKernel = kernel[idx];
 
-        const actR: f32 = @floatFromInt(actPixel.r);
-        const actG: f32 = @floatFromInt(actPixel.g);
-        const actB: f32 = @floatFromInt(actPixel.b);
+        const actR: f32 = @floatFromInt(actRgbPixel.r);
+        const actG: f32 = @floatFromInt(actRgbPixel.g);
+        const actB: f32 = @floatFromInt(actRgbPixel.b);
 
         avgR += actR * actKernel;
         avgG += actG * actKernel;
@@ -124,7 +125,7 @@ fn avg_pixels(pixelCoords: []Coord, kernel: []f32) Pixel {
     const g: u8 = if (avgG > 255) 255 else if (avgG < 0) 0 else @intFromFloat(avgG);
     const b: u8 = if (avgB > 255) 255 else if (avgB < 0) 0 else @intFromFloat(avgB);
 
-    return Pixel{
+    return RgbPixel{
         .r = r,
         .g = g,
         .b = b,
@@ -332,4 +333,105 @@ export fn edge_detection_sobel_vertical() void {
     };
 
     convolution(@constCast(&kernel));
+}
+
+fn rgb_to_hsl(rgb_pixel: RgbPixel) HslPixel {
+    const r: f32 = @floatFromInt(rgb_pixel.r);
+    const g: f32 = @floatFromInt(rgb_pixel.g);
+    const b: f32 = @floatFromInt(rgb_pixel.b);
+    const max = @max(@max(r, g), b);
+    const min = @min(@min(r, g), b);
+    const diff = (max - min) / 255;
+
+    const l = (max + min) / 510;
+    const s = if (l == 0) 0 else diff / (1 - std.math.fabs(2 * l - 1));
+
+    var h: f32 = 0.0;
+
+    if (s > std.math.floatEps(f32)) {
+        h = std.math.radiansToDegrees(f32, std.math.acos((r - 0.5 * g - 0.5 * b) / std.math.sqrt(r * r + g * g + b * b - r * g - r * b - g * b)));
+
+        if (b > g) {
+            h = 360 - h;
+        }
+    }
+
+    return HslPixel{ .h = h, .s = s, .l = l, .a = rgb_pixel.a };
+}
+
+fn hsl_to_rgb(hsl_pixel: HslPixel) RgbPixel {
+    const h = hsl_pixel.h;
+    const s = hsl_pixel.s;
+    const l = hsl_pixel.l;
+    
+    const diff = s * (1 - std.math.fabs(2 * l - 1));
+    const min = 255 * (l - 0.5 * diff);
+
+    const x = diff * (1 - std.math.fabs(@mod((h / 60.0), 2) - 1));
+
+    const val1 = 255 * diff + min;
+    const val2 = 255 * x + min;
+
+    var r: f32 = 0.0;
+    var g: f32 = 0.0;
+    var b: f32 = 0.0;
+
+    if (h < 60) {
+        r = val1;
+        g = val2;
+        b = min;
+    } else if (h < 120) {
+        r = val2;
+        g = val1;
+        b = min;
+    } else if (h < 180) {
+        r = min;
+        g = val1;
+        b = val2;
+    } else if (h < 240) {
+        r = min;
+        g = val2;
+        b = val1;
+    } else if (h < 300) {
+        r = val2;
+        g = min;
+        b = val1;
+    } else {
+        r = val1;
+        g = min;
+        b = val2;
+    }
+
+    return RgbPixel{
+        .r = @intFromFloat(r),
+        .g = @intFromFloat(g),
+        .b = @intFromFloat(b),
+        .a = hsl_pixel.a
+    };
+}
+
+export fn rotate_hue_by_10_deg() void {
+    var idx: u32 = 0;
+    while (idx < current_state.data.len) : (idx += 4) {
+        const r = current_state.data[idx];
+        const g = current_state.data[idx + 1];
+        const b = current_state.data[idx + 2];
+        const a = current_state.data[idx + 3];
+
+        var hsla = rgb_to_hsl(RgbPixel{
+            .r = r,
+            .g = g,
+            .b = b,
+            .a = a
+        });
+        hsla.h = @mod(hsla.h + 10, 360.0);
+
+        const newRgba = hsl_to_rgb(hsla);
+
+        next_state.data[idx] = newRgba.r;
+        next_state.data[idx + 1] = newRgba.g;
+        next_state.data[idx + 2] = newRgba.b;
+        next_state.data[idx + 3] = newRgba.a;
+    }
+    swap_states();
 }
