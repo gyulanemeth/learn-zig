@@ -81,8 +81,9 @@
             async function main() {
                 const start = performance.now()
 
-                await loadImgToCanvas('./lena.png')
+                // await loadImgToCanvas('./lena.png')
                 // await loadImgToCanvas('./valencia.jpeg')
+                await loadImgToCanvas('./woman-red-hat.jpeg')
                 const end = performance.now()
                 console.log('image to canvas', start - end)
 
@@ -108,6 +109,18 @@
                     await new Promise(resolve => setTimeout(resolve, 100))
                   }
                 }
+
+                document.getElementById('canvas').addEventListener('click', event => {
+                  const bb = canvas.getBoundingClientRect();
+                  const x = Math.floor( (event.clientX - bb.left) / bb.width * canvas.width );
+                  const y = Math.floor( (event.clientY - bb.top) / bb.height * canvas.height );
+
+                  jsAlgos.selectBasedOnHue({ x, y })
+                  //jsAlgos.saturateSelection()
+                  jsAlgos.invertSelection()
+                  jsAlgos.desaturateSelection()
+                })
+                
 
                 document.getElementById('invert-zig').onclick = wasmAlgos.invert
                 document.getElementById('grayscale-zig').onclick = wasmAlgos.toGrayscale

@@ -1,4 +1,6 @@
-function createImageManipulationFunctions(context, height, width) {
+function createImageManipulationFunctions(context, selectionContext, height, width) {
+    const selection = new Uint8ClampedArray(canvas.height * canvas.width)
+    selection.fill(0)
 
     function invert() {
         const start = performance.now()
@@ -387,6 +389,126 @@ function createImageManipulationFunctions(context, height, width) {
         execSpan.innerHTML = performance.now() - start
     }
 
+    function selectBasedOnHue({x, y}) {
+        const hueDiff = 22 // pass it as a param later
+
+        const start = performance.now()
+
+        const imgData = context.getImageData(0, 0, canvas.width, canvas.height);
+        const rgbPx = getPixel(imgData, x, y)
+        const hslPx = rgbToHsl(rgbPx)
+
+        const hueMin = hslPx.h - hueDiff
+        const hueMax = hslPx.h + hueDiff
+
+        selection.fill(0)
+
+        const visited = new Uint8ClampedArray(canvas.height * canvas.width)
+        visited.fill(0)
+        
+        const coordsToVisit = []
+        coordsToVisit.push({x, y})
+
+        while(coordsToVisit.length > 0) {
+            const actCoord = coordsToVisit.shift()
+            if (actCoord.x < 0 || actCoord.y < 0) {
+                continue
+            }
+
+            if (actCoord.x >= canvas.width || actCoord.y >= canvas.height) {
+                continue
+            }
+
+            if (visited[actCoord.y * canvas.width + actCoord.x] === 1) {
+                continue
+            }
+
+            visited[actCoord.y * canvas.width + actCoord.x] = 1
+
+            const actRgb = getPixel(imgData, actCoord.x, actCoord.y)
+            const actHsl = rgbToHsl(actRgb)
+
+            if (actHsl.h < hueMin) {
+                continue
+            }
+
+            if (actHsl.h > hueMax) {
+                continue
+            }
+
+            selection[actCoord.y * canvas.width + actCoord.x] = 1
+
+            coordsToVisit.push({ y: actCoord.y - 1, x: actCoord.x - 1 })
+            coordsToVisit.push({ y: actCoord.y - 1, x: actCoord.x })
+            coordsToVisit.push({ y: actCoord.y - 1, x: actCoord.x + 1 })
+
+            coordsToVisit.push({ y: actCoord.y, x: actCoord.x - 1 })
+            coordsToVisit.push({ y: actCoord.y, x: actCoord.x + 1 })
+
+            coordsToVisit.push({ y: actCoord.y + 1, x: actCoord.x - 1 })
+            coordsToVisit.push({ y: actCoord.y + 1, x: actCoord.x })
+            coordsToVisit.push({ y: actCoord.y + 1, x: actCoord.x + 1 })
+        }
+    }
+
+    function saturateSelection() {
+        const imgData = context.getImageData(0, 0, canvas.width, canvas.height);
+        for (let idx = 0; idx < imgData.data.length; idx += 4) {
+            const coordIdx = idx / 4
+
+            const r = imgData.data[idx]
+            const g = imgData.data[idx + 1]
+            const b = imgData.data[idx + 2]
+            const a = imgData.data[idx + 3]
+
+            if (selection[coordIdx] != 1) {
+                continue
+            }
+
+            const hsla = rgbToHsl({ r, g, b, a })
+            hsla.s = 1
+
+            const newRgba = hslToRgb(hsla)
+            imgData.data[idx] = newRgba.r
+            imgData.data[idx + 1] = newRgba.g
+            imgData.data[idx + 2] = newRgba.b
+            imgData.data[idx + 3] = newRgba.a
+        }
+        context.putImageData(imgData, 0, 0)
+    }
+
+    function desaturateSelection() {
+        const imgData = context.getImageData(0, 0, canvas.width, canvas.height);
+        for (let idx = 0; idx < imgData.data.length; idx += 4) {
+            const coordIdx = idx / 4
+
+            const r = imgData.data[idx]
+            const g = imgData.data[idx + 1]
+            const b = imgData.data[idx + 2]
+            const a = imgData.data[idx + 3]
+
+            if (selection[coordIdx] != 1) {
+                continue
+            }
+
+            const hsla = rgbToHsl({ r, g, b, a })
+            hsla.s = 0
+
+            const newRgba = hslToRgb(hsla)
+            imgData.data[idx] = newRgba.r
+            imgData.data[idx + 1] = newRgba.g
+            imgData.data[idx + 2] = newRgba.b
+            imgData.data[idx + 3] = newRgba.a
+        }
+        context.putImageData(imgData, 0, 0)
+    }
+
+    function invertSelection() {
+        for (let idx = 0; idx < selection.length; idx += 1) {
+            selection[idx] = Math.abs(selection[idx] - 1)
+        }
+    }
+
     return {
         invert,
         toGrayscale,
@@ -400,6 +522,11 @@ function createImageManipulationFunctions(context, height, width) {
         edgeDetectionSobelHorizontal,
         edgeDetectionSobelVertical,
 
-        rotateHueBy10Deg
+        rotateHueBy10Deg,
+
+        selectBasedOnHue,
+        saturateSelection,
+        desaturateSelection,
+        invertSelection
     }
 }
