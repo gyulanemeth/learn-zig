@@ -389,7 +389,7 @@ function createImageManipulationFunctions(context, selectionContext, height, wid
         execSpan.innerHTML = performance.now() - start
     }
 
-    function selectBasedOnHue({x, y}) {
+    function setSelectionValueBasedOnHue({x, y}, value) {
         const hueDiff = 22 // pass it as a param later
 
         const start = performance.now()
@@ -400,8 +400,6 @@ function createImageManipulationFunctions(context, selectionContext, height, wid
 
         const hueMin = hslPx.h - hueDiff
         const hueMax = hslPx.h + hueDiff
-
-        selection.fill(0)
 
         const visited = new Uint8ClampedArray(canvas.height * canvas.width)
         visited.fill(0)
@@ -423,7 +421,7 @@ function createImageManipulationFunctions(context, selectionContext, height, wid
                 continue
             }
 
-            visited[actCoord.y * canvas.width + actCoord.x] = 1
+            visited[actCoord.y * canvas.width + actCoord.x] = value
 
             const actRgb = getPixel(imgData, actCoord.x, actCoord.y)
             const actHsl = rgbToHsl(actRgb)
@@ -449,6 +447,15 @@ function createImageManipulationFunctions(context, selectionContext, height, wid
             coordsToVisit.push({ y: actCoord.y + 1, x: actCoord.x })
             coordsToVisit.push({ y: actCoord.y + 1, x: actCoord.x + 1 })
         }
+        drawSelectedPixels()
+    }
+
+    function addToSelectionBasedOnHue({x, y}) {
+        setSelectionValueBasedOnHue({x, y}, 1)
+    }
+
+    function removeFromSelectionBasedOnHue({x, y}) {
+        setSelectionValueBasedOnHue({x, y}, 1)
     }
 
     function saturateSelection() {
@@ -475,6 +482,7 @@ function createImageManipulationFunctions(context, selectionContext, height, wid
             imgData.data[idx + 3] = newRgba.a
         }
         context.putImageData(imgData, 0, 0)
+        drawSelectedPixels()
     }
 
     function desaturateSelection() {
@@ -501,12 +509,38 @@ function createImageManipulationFunctions(context, selectionContext, height, wid
             imgData.data[idx + 3] = newRgba.a
         }
         context.putImageData(imgData, 0, 0)
+        drawSelectedPixels()
+    }
+
+    function selectAll() {
+        selection.fill(1)
+        drawSelectedPixels()
+    }
+
+    function deselectAll() {
+        selection.fill(0)
+        drawSelectedPixels()
     }
 
     function invertSelection() {
         for (let idx = 0; idx < selection.length; idx += 1) {
             selection[idx] = Math.abs(selection[idx] - 1)
         }
+        drawSelectedPixels()
+    }
+
+    function drawSelectedPixels() {
+        const imgData = context.getImageData(0, 0, canvas.width, canvas.height);
+        for (let idx = 0; idx < selection.length; idx += 1) {
+            if (selection[idx] === 0) {
+                const imgIdx = idx * 4
+                imgData.data[imgIdx] = 0
+                imgData.data[imgIdx + 1] = 0
+                imgData.data[imgIdx + 2] = 0
+                imgData.data[imgIdx + 3] = 0
+            }
+        }
+        selectionContext.putImageData(imgData, 0, 0)
     }
 
     return {
@@ -524,9 +558,13 @@ function createImageManipulationFunctions(context, selectionContext, height, wid
 
         rotateHueBy10Deg,
 
-        selectBasedOnHue,
+        selectAll,
+        deselectAll,
+        addToSelectionBasedOnHue,
+        removeFromSelectionBasedOnHue,
+        invertSelection,
+
         saturateSelection,
-        desaturateSelection,
-        invertSelection
+        desaturateSelection
     }
 }

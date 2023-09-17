@@ -45,6 +45,11 @@
                     <td><button id="rotateHueBy10Deg-zig">Rotate Hue by 10 Deg (36x)</button></td>
                 </tr>
             </table>
+            <button id="invert-selection-js">Invert Selection</button>
+            <button id="deselect-all-js">Deselect All</button>
+            <button id="select-all-js">Select All</button>
+            <button id="desaturate-selection-js">Desaturate Selection</button>
+            <button id="saturate-selection-js">Saturate Selection</button>
         </span>
         <span>
             <span>Last exec. time:</span>
@@ -52,6 +57,7 @@
         </span>
         <div>
             <canvas id="canvas"></canvas>
+            <canvas id="selected-pixels"></canvas>
         </div>
         <div>
             
@@ -61,6 +67,9 @@
         <script>
             const canvas = document.getElementById('canvas')
             const context = canvas.getContext('2d', { willReadFrequently: true })
+
+            const selectedPixels = document.getElementById('selected-pixels')
+            const selectedPixelsContext = selectedPixels.getContext('2d', { willReadFrequently: true })
 
             function loadImg(url) {
               return new Promise(resolve => {
@@ -76,6 +85,9 @@
               canvas.width = img.naturalWidth
               canvas.height = img.naturalHeight
               context.drawImage(img, 0, 0)
+
+              selectedPixels.width = img.naturalWidth
+              selectedPixels.height = img.naturalHeight
             }
 
             async function main() {
@@ -90,7 +102,7 @@
 
 
                 const wasmAlgos = await createWasmWrapper(context, canvas.height, canvas.width)
-                const jsAlgos = createImageManipulationFunctions(context, canvas.height, canvas.width)
+                const jsAlgos = createImageManipulationFunctions(context, selectedPixelsContext, canvas.height, canvas.width)
 
                 document.getElementById('invert-js').onclick = jsAlgos.invert
                 document.getElementById('grayscale-js').onclick = jsAlgos.toGrayscale
@@ -111,16 +123,26 @@
                 }
 
                 document.getElementById('canvas').addEventListener('click', event => {
-                  const bb = canvas.getBoundingClientRect();
-                  const x = Math.floor( (event.clientX - bb.left) / bb.width * canvas.width );
-                  const y = Math.floor( (event.clientY - bb.top) / bb.height * canvas.height );
+                  const bb = canvas.getBoundingClientRect()
+                  const x = Math.floor( (event.clientX - bb.left) / bb.width * canvas.width )
+                  const y = Math.floor( (event.clientY - bb.top) / bb.height * canvas.height )
 
-                  jsAlgos.selectBasedOnHue({ x, y })
-                  //jsAlgos.saturateSelection()
-                  jsAlgos.invertSelection()
-                  jsAlgos.desaturateSelection()
+                  jsAlgos.addToSelectionBasedOnHue({ x, y })
                 })
-                
+
+                document.getElementById('canvas').addEventListener('contextmenu', event => {
+                  const bb = canvas.getBoundingClientRect()
+                  const x = Math.floor( (event.clientX - bb.left) / bb.width * canvas.width )
+                  const y = Math.floor( (event.clientY - bb.top) / bb.height * canvas.height )
+
+                  jsAlgos.removeFromSelectionBasedOnHue({ x, y })
+                })
+
+                document.getElementById('invert-selection-js').onclick = jsAlgos.invertSelection
+                document.getElementById('deselect-all-js').onclick = jsAlgos.deselectAll
+                document.getElementById('select-all-js').onclick = jsAlgos.selectAll
+                document.getElementById('desaturate-selection-js').onclick = jsAlgos.desaturateSelection
+                document.getElementById('saturate-selection-js').onclick = jsAlgos.saturateSelection
 
                 document.getElementById('invert-zig').onclick = wasmAlgos.invert
                 document.getElementById('grayscale-zig').onclick = wasmAlgos.toGrayscale
