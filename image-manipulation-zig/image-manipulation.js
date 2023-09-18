@@ -368,6 +368,9 @@ function createImageManipulationFunctions(context, selectionContext, height, wid
         const imgData = context.getImageData(0, 0, canvas.width, canvas.height);
 
         for (let idx = 0; idx < imgData.data.length; idx += 4) {
+            if (selection[idx / 4] === 0) {
+                continue
+            }
             const r = imgData.data[idx]
             const g = imgData.data[idx + 1]
             const b = imgData.data[idx + 2]
@@ -446,6 +449,27 @@ function createImageManipulationFunctions(context, selectionContext, height, wid
             coordsToVisit.push({ y: actCoord.y + 1, x: actCoord.x - 1 })
             coordsToVisit.push({ y: actCoord.y + 1, x: actCoord.x })
             coordsToVisit.push({ y: actCoord.y + 1, x: actCoord.x + 1 })
+        }
+        drawSelectedPixels()
+    }
+
+    function addToSelection({x, y}) {
+        const coordsToVisit = []
+        coordsToVisit.push({x, y})
+        coordsToVisit.push({ y: y - 1, x: x - 1 })
+        coordsToVisit.push({ y: y - 1, x: x })
+        coordsToVisit.push({ y: y - 1, x: x + 1 })
+
+        coordsToVisit.push({ y: y, x: x - 1 })
+        coordsToVisit.push({ y: y, x: x + 1 })
+
+        coordsToVisit.push({ y: y + 1, x: x - 1 })
+        coordsToVisit.push({ y: y + 1, x: x })
+        coordsToVisit.push({ y: y + 1, x: x + 1 })
+
+        while(coordsToVisit.length > 0) {
+            const actCoord = coordsToVisit.shift()
+            selection[actCoord.y * canvas.width + actCoord.x] = 1
         }
         drawSelectedPixels()
     }
@@ -560,6 +584,7 @@ function createImageManipulationFunctions(context, selectionContext, height, wid
 
         selectAll,
         deselectAll,
+        addToSelection,
         addToSelectionBasedOnHue,
         removeFromSelectionBasedOnHue,
         invertSelection,
