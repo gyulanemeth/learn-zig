@@ -1,0 +1,48 @@
+<html>
+    <body>
+        <script>
+            async function main() {
+                let testFunction = (array, idx1, idx2) => {
+                    if (array[idx1] > array[idx2]) {
+                        const temp = array[idx1]
+                        array[idx1] = array[idx2]
+                        array[idx2] = temp
+                        return true
+                    }
+                    return false
+                }
+
+                const importObject = {
+                    env: {
+                        swapIfNeeded: (addr, idx1, idx2) => {
+                            const int32Array = new Int32Array(wasmIface.memory.buffer, addr, 5)
+
+                            testFunction(int32Array, idx1, idx2)
+                        },
+                        logRef: (addr) => {
+                            const arr = new Int32Array(wasmIface.memory.buffer, addr, 5)
+
+                            console.log('ref', arr)
+                        },
+                        logSol: (addr) => {
+                            const arr = new Int32Array(wasmIface.memory.buffer, addr, 5)
+
+                            console.log('sol', arr)
+                        }
+                    }
+                }
+                const results = await WebAssembly.instantiateStreaming(fetch("./bubble-sort-test.wasm"), importObject)
+                const wasmIface = results.instance.exports
+            
+                if (wasmIface.sort()) {
+                    console.log("GOOD")
+                } else {
+                    console.log(":(")
+                }
+            
+            }
+
+            main()
+        </script>
+    </body>
+</html>
