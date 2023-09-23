@@ -1,47 +1,75 @@
 <html>
+    <head>
+        <style>
+            #steps {
+                display: flex;
+            }
+            #steps > pre {
+                width: 50%;
+            }
+        </style>
+    </head>
+    <textarea id="code">window.swapIfNeeded = (array, idx1, idx2) => {}</textarea>
+    <div>
+        <button id="test-code">Test</button>
+    </div>
+    <div id="steps">
+        <pre id="ref-steps"></pre>
+        <pre id="sol-steps"></pre>
+    </div>
+    <div id="result"></div>
     <body>
         <script>
+            /*
+            ref sol:
+            window.swapIfNeeded = (array, idx1, idx2) => {
+  if (array[idx1] > array[idx2]) {
+    const temp = array[idx1]
+    array[idx1] = array[idx2]
+    array[idx2] = temp
+  }
+}
+            */
             async function main() {
-                let testFunction = (array, idx1, idx2) => {
-                    if (array[idx1] > array[idx2]) {
-                        const temp = array[idx1]
-                        array[idx1] = array[idx2]
-                        array[idx2] = temp
-                        return true
-                    }
-                    return false
-                }
-
                 const importObject = {
                     env: {
                         swapIfNeeded: (addr, idx1, idx2) => {
                             const int32Array = new Int32Array(wasmIface.memory.buffer, addr, 5)
 
-                            testFunction(int32Array, idx1, idx2)
+                            window.swapIfNeeded(int32Array, idx1, idx2)
                         },
                         logRef: (addr) => {
                             const arr = new Int32Array(wasmIface.memory.buffer, addr, 5)
 
-                            console.log('ref', arr)
+                            document.getElementById('ref-steps').innerHTML += "\n"
+                            document.getElementById('ref-steps').innerHTML += arr
                         },
                         logSol: (addr) => {
                             const arr = new Int32Array(wasmIface.memory.buffer, addr, 5)
 
-                            console.log('sol', arr)
+                            document.getElementById('sol-steps').innerHTML += "\n"
+                            document.getElementById('sol-steps').innerHTML += arr
                         }
                     }
                 }
                 const results = await WebAssembly.instantiateStreaming(fetch("./bubble-sort-test.wasm"), importObject)
                 const wasmIface = results.instance.exports
-            
-                if (wasmIface.sort()) {
-                    console.log("GOOD")
-                } else {
-                    console.log(":(")
-                }
-            
-            }
 
+                document.getElementById('test-code').onclick = () => {
+                    document.getElementById('ref-steps').innerHTML = 'Reference steps:'
+                    document.getElementById('sol-steps').innerHTML = 'Your solution steps:'
+
+                    const code = document.getElementById('code').value
+                    
+                    eval(code)
+
+                    if (wasmIface.sort()) {
+                        document.getElementById("result").innerHTML = "Congrats!"
+                    } else {
+                        document.getElementById("result").innerHTML = "Not there yet... :/"
+                    }
+                }
+            }
             main()
         </script>
     </body>
