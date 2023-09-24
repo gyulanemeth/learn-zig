@@ -16,5 +16,24 @@ Here are some ideas for the tests:
  - game of life update rules (or other parts of the state update function)
  - minesweeper reveal algorightm
 
-
 The webassembly module will run the basis of the algorithm, and the candidates will have to write one-one function.
+
+## ChatGPT test
+
+Bubble sort challenge
+ - easily solvable with chatgpt
+ - I guess it will be the same with any of the famous sorting algorithms
+
+Array manipulation:
+ - based on the description, ChatGPT could easily solve them
+
+
+Game of life:
+ - it does something, but I'm not sure that it will work...
+
+
+Image manipulation algos:
+ - chatgpt could easily solve them.
+
+
+What the fuck shall I test then???
