@@ -45,11 +45,50 @@
                     <td><button id="rotateHueBy10Deg-zig">Rotate Hue by 10 Deg (36x)</button></td>
                 </tr>
             </table>
+            <table>
+              <tr>
+                <td>
+                  <button onclick="jsAlgos.addHueToSelection(-10)">--</button>
+                </td><td>
+                  <button onclick="jsAlgos.addHueToSelection(-1)">-</button>
+                </td><td>
+                  Hue
+                </td><td>
+                  <button onclick="jsAlgos.addHueToSelection(1)">+</button>
+                </td><td>
+                  <button onclick="jsAlgos.addHueToSelection(10)">++</button>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <button onclick="jsAlgos.addSaturationToSelection(-0.1)">--</button>
+                </td><td>
+                  <button onclick="jsAlgos.addSaturationToSelection(-0.01)">-</button>
+                </td><td>
+                  Saturation
+                </td><td>
+                  <button onclick="jsAlgos.addSaturationToSelection(0.01)">+</button>
+                </td><td>
+                  <button onclick="jsAlgos.addSaturationToSelection(0.1)">++</button>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <button onclick="jsAlgos.addLightnessToSelection(-0.1)">--</button>
+                </td><td>
+                  <button onclick="jsAlgos.addLightnessToSelection(-0.01)">-</button>
+                </td><td>
+                  Lightness
+                </td><td>
+                  <button onclick="jsAlgos.addLightnessToSelection(0.01)">+</button>
+                </td><td>
+                  <button onclick="jsAlgos.addLightnessToSelection(0.1)">++</button>
+                </td>
+              </tr>
+            </table>
             <button id="invert-selection-js">Invert Selection</button>
             <button id="deselect-all-js">Deselect All</button>
             <button id="select-all-js">Select All</button>
-            <button id="desaturate-selection-js">Desaturate Selection</button>
-            <button id="saturate-selection-js">Saturate Selection</button>
         </span>
         <span>
             <span>Last exec. time:</span>
@@ -65,6 +104,7 @@
         <script src="./image-manipulation.js"></script>
         <script src="./image-manipulation-wasm-wrapper.js"></script>
         <script>
+            let jsAlgos;
             const canvas = document.getElementById('canvas')
             const context = canvas.getContext('2d', { willReadFrequently: true })
 
@@ -95,16 +135,16 @@
 
                 // await loadImgToCanvas('./lena.png')
                 // await loadImgToCanvas('./valencia.jpeg')
-                // await loadImgToCanvas('./woman-red-hat.jpeg')
+                await loadImgToCanvas('./woman-red-hat.jpeg')
                 // await loadImgToCanvas('./woman-brown-eyes.jpeg')
-                await loadImgToCanvas('./lipstick.jpeg')
+                // await loadImgToCanvas('./lipstick.jpeg')
                 const end = performance.now()
                 console.log('image to canvas', start - end)
 
 
 
                 const wasmAlgos = await createWasmWrapper(context, canvas.height, canvas.width)
-                const jsAlgos = createImageManipulationFunctions(context, selectedPixelsContext, canvas.height, canvas.width)
+                jsAlgos = createImageManipulationFunctions(context, selectedPixelsContext, canvas.height, canvas.width)
 
                 document.getElementById('invert-js').onclick = jsAlgos.invert
                 document.getElementById('grayscale-js').onclick = jsAlgos.toGrayscale
