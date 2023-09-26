@@ -392,8 +392,10 @@ function createImageManipulationFunctions(context, selectionContext, height, wid
         execSpan.innerHTML = performance.now() - start
     }
 
-    function setSelectionValueBasedOnHue({x, y}, value) {
-        const hueDiff = 20 // pass it as a param later
+    function setSelectionValueBasedOnHslRange({x, y}, value) {
+        const hueDiff = 20
+        const lightnessDiff = 0.1
+        const saturationDiff = 0.1
 
         const start = performance.now()
 
@@ -403,6 +405,10 @@ function createImageManipulationFunctions(context, selectionContext, height, wid
 
         const hueMin = hslPx.h - hueDiff
         const hueMax = hslPx.h + hueDiff
+        const lightnessMin = hslPx.l - lightnessDiff
+        const lightnessMax = hslPx.l + lightnessDiff
+        const saturationMin = hslPx.s - saturationDiff
+        const saturationMax = hslPx.s + saturationDiff
 
         const visited = new Uint8ClampedArray(canvas.height * canvas.width)
         visited.fill(0)
@@ -437,6 +443,22 @@ function createImageManipulationFunctions(context, selectionContext, height, wid
                 continue
             }
 
+            if (actHsl.l < lightnessMin) {
+                continue
+            }
+
+            if (actHsl.l > lightnessMax) {
+                continue
+            }
+
+            if (actHsl.s < saturationMin) {
+                continue
+            }
+
+            if (actHsl.s > saturationMax) {
+                continue
+            }
+
             selection[actCoord.y * canvas.width + actCoord.x] = 1
 
             coordsToVisit.push({ y: actCoord.y - 1, x: actCoord.x - 1 })
@@ -449,6 +471,92 @@ function createImageManipulationFunctions(context, selectionContext, height, wid
             coordsToVisit.push({ y: actCoord.y + 1, x: actCoord.x - 1 })
             coordsToVisit.push({ y: actCoord.y + 1, x: actCoord.x })
             coordsToVisit.push({ y: actCoord.y + 1, x: actCoord.x + 1 })
+        }
+        drawSelectedPixels()
+    }
+
+    function setSelectionBasedOnHeighbouringHslRange({x, y}, value) {
+        const hueDiff = 360
+        const lightnessDiff = 0.2
+        const saturationDiff = 0.1
+
+        const start = performance.now()
+
+        const imgData = context.getImageData(0, 0, canvas.width, canvas.height);
+        const rgbPx = getPixel(imgData, x, y)
+        const hslPx = rgbToHsl(rgbPx)
+
+        const visited = new Uint8ClampedArray(canvas.height * canvas.width)
+        visited.fill(0)
+        
+        const coordsToVisit = []
+        coordsToVisit.push({ coord: {x, y}, hsl: hslPx })
+
+        while(coordsToVisit.length > 0) {
+            const act = coordsToVisit.shift()
+            const actCoord = act.coord
+            const hslPx = act.hsl
+
+            if (actCoord.x < 0 || actCoord.y < 0) {
+                continue
+            }
+
+            if (actCoord.x >= canvas.width || actCoord.y >= canvas.height) {
+                continue
+            }
+
+            if (visited[actCoord.y * canvas.width + actCoord.x] === 1) {
+                continue
+            }
+
+            visited[actCoord.y * canvas.width + actCoord.x] = value
+
+            let hueMin = hslPx.h - hueDiff
+            let hueMax = hslPx.h + hueDiff
+            let lightnessMin = hslPx.l - lightnessDiff
+            let lightnessMax = hslPx.l + lightnessDiff
+            let saturationMin = hslPx.s - saturationDiff
+            let saturationMax = hslPx.s + saturationDiff
+
+            const actRgb = getPixel(imgData, actCoord.x, actCoord.y)
+            const actHsl = rgbToHsl(actRgb)
+
+            if (actHsl.h < hueMin) {
+                continue
+            }
+
+            if (actHsl.h > hueMax) {
+                continue
+            }
+
+            if (actHsl.l < lightnessMin) {
+                continue
+            }
+
+            if (actHsl.l > lightnessMax) {
+                continue
+            }
+
+            if (actHsl.s < saturationMin) {
+                continue
+            }
+
+            if (actHsl.s > saturationMax) {
+                continue
+            }
+
+            selection[actCoord.y * canvas.width + actCoord.x] = 1
+
+            coordsToVisit.push({ coord: { y: actCoord.y - 1, x: actCoord.x - 1 }, hsl: actHsl })
+            coordsToVisit.push({ coord: { y: actCoord.y - 1, x: actCoord.x }, hsl: actHsl })
+            coordsToVisit.push({ coord: { y: actCoord.y - 1, x: actCoord.x + 1 }, hsl: actHsl })
+
+            coordsToVisit.push({ coord: { y: actCoord.y, x: actCoord.x - 1 }, hsl: actHsl })
+            coordsToVisit.push({ coord: { y: actCoord.y, x: actCoord.x + 1 }, hsl: actHsl })
+
+            coordsToVisit.push({ coord: { y: actCoord.y + 1, x: actCoord.x - 1 }, hsl: actHsl })
+            coordsToVisit.push({ coord: { y: actCoord.y + 1, x: actCoord.x }, hsl: actHsl })
+            coordsToVisit.push({ coord: { y: actCoord.y + 1, x: actCoord.x + 1 }, hsl: actHsl })
         }
         drawSelectedPixels()
     }
@@ -474,12 +582,20 @@ function createImageManipulationFunctions(context, selectionContext, height, wid
         drawSelectedPixels()
     }
 
-    function addToSelectionBasedOnHue({x, y}) {
-        setSelectionValueBasedOnHue({x, y}, 1)
+    function addToSelectionBasedOnHslRange({x, y}) {
+        setSelectionValueBasedOnHslRange({x, y}, 1)
     }
 
     function removeFromSelectionBasedOnHue({x, y}) {
-        setSelectionValueBasedOnHue({x, y}, 1)
+        setSelectionValueBasedOnHslRange({x, y}, 0)
+    }
+
+    function addToSelectionBasedOnNeighbouringHslRange({x, y}) {
+        setSelectionBasedOnHeighbouringHslRange({x, y}, 1)
+    }
+
+    function removeFromSelectionBasedOnNeighbouringHslRange({x, y}) {
+        setSelectionBasedOnHeighbouringHslRange({x, y}, 0)
     }
 
     function addSaturationToSelection(saturationDiff) {
@@ -636,8 +752,10 @@ function createImageManipulationFunctions(context, selectionContext, height, wid
         selectAll,
         deselectAll,
         addToSelection,
-        addToSelectionBasedOnHue,
+        addToSelectionBasedOnHslRange,
+        addToSelectionBasedOnNeighbouringHslRange,
         removeFromSelectionBasedOnHue,
+        removeFromSelectionBasedOnNeighbouringHslRange,
         invertSelection,
 
         addSaturationToSelection,

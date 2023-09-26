@@ -86,6 +86,11 @@
                 </td>
               </tr>
             </table>
+            Selection method:
+            <select id="selection-method" name="selection-method">
+              <option value="hsl-range">Add to selection based on HSL range</option>
+              <option value="neightbouring-hsl-range">Add to selection based on neighbouring HSL range</option>
+            </select>
             <button id="invert-selection-js">Invert Selection</button>
             <button id="deselect-all-js">Deselect All</button>
             <button id="select-all-js">Select All</button>
@@ -164,41 +169,18 @@
                   const x = Math.floor( (event.clientX - bb.left) / bb.width * canvas.width )
                   const y = Math.floor( (event.clientY - bb.top) / bb.height * canvas.height )
 
-                  jsAlgos.addToSelection({ x, y })
-                })
+                  const selectionMethod = document.getElementById('selection-method').value
 
-                let mouseDown = false
-                document.getElementById('canvas').addEventListener('mousedown', event => {
-                  mouseDown = true
-                })
-
-                document.getElementById('canvas').addEventListener('mouseup', event => {
-                  mouseDown = false
-                })
-
-                document.getElementById('canvas').addEventListener('mousemove', event => {
-                  const bb = canvas.getBoundingClientRect()
-                  const x = Math.floor( (event.clientX - bb.left) / bb.width * canvas.width )
-                  const y = Math.floor( (event.clientY - bb.top) / bb.height * canvas.height )
-
-                  if (mouseDown) {
-                    jsAlgos.addToSelection({ x, y })
+                  if (selectionMethod === 'hsl-range') {
+                    jsAlgos.addToSelectionBasedOnHslRange({ x, y })
+                  } else if (selectionMethod === 'neightbouring-hsl-range') {
+                    jsAlgos.addToSelectionBasedOnNeighbouringHslRange({ x, y })
                   }
-                })
-
-                document.getElementById('canvas').addEventListener('contextmenu', event => {
-                  const bb = canvas.getBoundingClientRect()
-                  const x = Math.floor( (event.clientX - bb.left) / bb.width * canvas.width )
-                  const y = Math.floor( (event.clientY - bb.top) / bb.height * canvas.height )
-
-                  jsAlgos.addToSelectionBasedOnHue({ x, y })
                 })
 
                 document.getElementById('invert-selection-js').onclick = jsAlgos.invertSelection
                 document.getElementById('deselect-all-js').onclick = jsAlgos.deselectAll
                 document.getElementById('select-all-js').onclick = jsAlgos.selectAll
-                document.getElementById('desaturate-selection-js').onclick = jsAlgos.desaturateSelection
-                document.getElementById('saturate-selection-js').onclick = jsAlgos.saturateSelection
 
                 document.getElementById('invert-zig').onclick = wasmAlgos.invert
                 document.getElementById('grayscale-zig').onclick = wasmAlgos.toGrayscale
