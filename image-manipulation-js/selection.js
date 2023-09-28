@@ -16,9 +16,13 @@ export default (imgData) => {
 
     function invert() {
         for (let idx = 0; idx < selection.length; idx += 1) {
-            selection[idx] = Math.abs(selection[idx] - 1)
+            selection[idx] = 1 - selection[idx]
         }
         drawSelectedPixels()
+    }
+
+    function setSelectionStrategy(name, params) {
+
     }
 
     function setSelectionValueBasedOnHslRange({x, y}, value) {
@@ -26,7 +30,6 @@ export default (imgData) => {
         const lightnessDiff = 0.1
         const saturationDiff = 0.1
 
-        const start = performance.now()
 
         const imgData = context.getImageData(0, 0, canvas.width, canvas.height);
         const rgbPx = getPixel(imgData, x, y)
@@ -232,6 +235,8 @@ export default (imgData) => {
         selectAll,
         deselectAll,
         invert,
+
+        setSelectionStrategy,
 
         addR,
         addBasedOnHslRange,
