@@ -1,3 +1,5 @@
+import { rgbToHsl } from './convert.js'
+
 export default (imgData) => {
     const selection = new Uint8ClampedArray(imgData.height * imgData.width)
     // This will be useful, when I introduce fuzzy selecitons:
@@ -19,10 +21,6 @@ export default (imgData) => {
             selection[idx] = 1 - selection[idx]
         }
         drawSelectedPixels()
-    }
-
-    function setSelectionStrategy(name, params) {
-
     }
 
     function setSelectionValueBasedOnHslRange({x, y}, value) {
@@ -232,6 +230,8 @@ export default (imgData) => {
     }
 
     return {
+        selection,
+
         selectAll,
         deselectAll,
         invert,
