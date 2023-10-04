@@ -1,43 +1,52 @@
 <html>
-    <head>
-        <title>js image manipulation test</title>
-        <style>
-          body {
-            margin: 0;
-            padding: 0;
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JS Image Manipulation Reference Implementation</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vuetify@3.3.17/dist/vuetify.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vuetify@3.3.17/dist/vuetify.min.css">
+  </head>
+  <body>
+    <div id="app">
+      <v-layout class="rounded rounded-md">
+        <v-app-bar title="JS Image Manipulation Reference Implementation"></v-app-bar>
+    
+        <v-navigation-drawer>
+          <v-list>
+            <v-list-item title="Lena"></v-list-item>
+          </v-list>
+        </v-navigation-drawer>
+    
+        <v-main class="d-flex align-center justify-center" style="min-height: 300px;">
+          <canvas v-draw-image="imgSrc"></canvas>
+          {{message}}
+        </v-main>
+      </v-layout>
+    </div>
+    <script>
+      const { createApp, ref } = Vue
+      const { createVuetify } = Vuetify
+
+      const vuetify = createVuetify()
+
+      createApp({
+        setup() {
+          const imgSrc = ref('./lena.png')
+          return {
+            imgSrc
           }
-
-          #canvas {
-            transform: scale(0.4) translate(-70%, -70%);
+        },
+        directives: {
+          'draw-image': {
+            async updated(el, binding, vnode, prevVnode) {
+              const imgHandler = await import('./image-handling.js')
+              const img = await imgHandler.loadImg(binding.value)
+              imgHandler.drawImageToCanvas(el, img)
+            }
           }
-        </style>
-    </head>
-    <body>
-        <button id="grayscale-btn">grayscale</button><span id="exec-time"></span>
-        <canvas id="canvas"></canvas>
-        <script>
-            const canvas = document.getElementById('canvas')
-            const context = canvas.getContext('2d')
-
-            function loadImg(url) {
-              return new Promise(resolve => {
-                let img = new Image()
-                img.crossOrigin = 'Anonymous'
-                img.onload = () => resolve(img)
-                img.src = url
-              })
-            }
-
-            async function loadImgToCanvas(url) {
-              const img = await loadImg(url)
-              canvas.width = img.naturalWidth
-              canvas.height = img.naturalHeight
-              context.drawImage(img, 0, 0)
-
-              document.getElementById('grayscale-btn').onclick = toGrayscale
-            }
-
-            loadImgToCanvas('./valencia.jpeg')
-        </script>
-    </body>
+        }
+      }).use(vuetify).mount('#app')
+    </script>
+  </body>
 </html>
