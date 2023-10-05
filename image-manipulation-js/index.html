@@ -6,6 +6,7 @@
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vuetify@3.3.17/dist/vuetify.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vuetify@3.3.17/dist/vuetify.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.2.96/css/materialdesignicons.min.css">
   </head>
   <body>
     <div id="app">
@@ -19,7 +20,45 @@
         </v-navigation-drawer>
     
         <v-main class="d-flex align-center justify-center" style="min-height: 300px;">
-          <canvas v-draw-image="imgSrc"></canvas>
+          <v-container>
+            <v-row>
+              <v-col>
+                <v-toolbar
+                flat
+                density="compact"
+                :elevation="1"
+                >
+                  <v-btn-toggle>
+                    <v-btn icon>
+                      <v-icon>mdi-select-drag</v-icon>
+                    </v-btn>
+                    <v-btn icon>
+                      <v-icon>mdi-brush</v-icon>
+                    </v-btn>
+                    <v-btn icon>
+                      <v-icon>mdi-palette</v-icon>
+                    </v-btn>
+                  </v-btn-toggle>
+                  <v-spacer></v-spacer>
+                  <v-select
+                    style="max-width: 130px;"
+                    v-model="toolbar.zoom.value"
+                    :items="toolbar.zoomValues"
+                    hide-details
+                    flat
+                    prepend-inner-icon="mdi-magnify-plus-outline"
+                  ></v-select>
+                </v-toolbar>
+              </v-col>
+            </v-row>
+            <v-row>
+              <v-col class="d-flex justify-center align-center">
+                <canvas v-draw-image="imgSrc"></canvas>
+              </v-col>
+            </v-row>
+          </v-container>
+          <div>
+          </div>
           {{message}}
         </v-main>
       </v-layout>
@@ -33,8 +72,14 @@
       createApp({
         setup() {
           const imgSrc = ref('./lena.png')
+          const zoom = ref('100%')
           return {
+            toolbar: {
+              zoom,
+              zoomValues: ['100%', '75%', '50%', '25%']
+            },
             imgSrc
+
           }
         },
         directives: {
