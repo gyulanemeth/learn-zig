@@ -1,26 +1,28 @@
 import { rgbToHsl } from './convert.js'
 
-export default (imgData) => {
+export default (imgData, drawSelectedPixels = () => {}) => {
     const selection = new Uint8ClampedArray(imgData.height * imgData.width)
     // This will be useful, when I introduce fuzzy selecitons:
     // const selection = new Float32Array(imgData.height * imgData.width)
     selection.fill(0)
 
+    drawSelectedPixels(selection)
+
     function selectAll() {
         selection.fill(1)
-        drawSelectedPixels()
+        drawSelectedPixels(selection)
     }
 
     function deselectAll() {
         selection.fill(0)
-        drawSelectedPixels()
+        drawSelectedPixels(selection)
     }
 
     function invert() {
         for (let idx = 0; idx < selection.length; idx += 1) {
             selection[idx] = 1 - selection[idx]
         }
-        drawSelectedPixels()
+        drawSelectedPixels(selection)
     }
 
     function setSelectionValueBasedOnHslRange({x, y}, value) {
@@ -102,7 +104,7 @@ export default (imgData) => {
             coordsToVisit.push({ y: actCoord.y + 1, x: actCoord.x })
             coordsToVisit.push({ y: actCoord.y + 1, x: actCoord.x + 1 })
         }
-        drawSelectedPixels()
+        drawSelectedPixels(selection)
     }
 
     function setSelectionBasedOnHeighbouringHslRange({x, y}, value) {
@@ -188,7 +190,7 @@ export default (imgData) => {
             coordsToVisit.push({ coord: { y: actCoord.y + 1, x: actCoord.x }, hsl: actHsl })
             coordsToVisit.push({ coord: { y: actCoord.y + 1, x: actCoord.x + 1 }, hsl: actHsl })
         }
-        drawSelectedPixels()
+        drawSelectedPixels(selection)
     }
 
     function addR({x, y}, r) {
@@ -210,7 +212,7 @@ export default (imgData) => {
             const actCoord = coordsToVisit.shift()
             selection[actCoord.y * canvas.width + actCoord.x] = 1
         }
-        drawSelectedPixels()
+        drawSelectedPixels(selection)
     }
 
     function addBasedOnHslRange({x, y}) {

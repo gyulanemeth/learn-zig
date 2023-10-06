@@ -11,12 +11,18 @@
   <body>
     <div id="app">
       <v-layout class="rounded rounded-md">
-        <v-app-bar title="JS Image Manipulation Reference Implementation"></v-app-bar>
-    
-        <v-navigation-drawer>
+        <v-navigation-drawer permanent>
           <v-list>
-            <v-list-item title="Lena"></v-list-item>
+            <v-list-item title="Yo"></v-list-item>
           </v-list>
+          <template v-slot:append>
+            <v-card v-if="imgData">
+              <v-card-subtitle>Selection</v-card-subtitle>
+              <v-card-text>
+                <canvas style="border: 1px solid gray; width: 100%"></canvas>
+              </v-card-text>
+            </v-card>
+          </template>
         </v-navigation-drawer>
     
         <v-main class="d-flex align-center justify-center" style="min-height: 300px;">
@@ -53,13 +59,10 @@
             </v-row>
             <v-row>
               <v-col class="d-flex justify-center align-center">
-                <canvas v-draw-image="imgSrc"></canvas>
+                <canvas v-draw-image="imgSrc" :style="{ transform: `scale(${parseInt(toolbar.zoom.value.replace('%', '')) / 100})` }"></canvas>
               </v-col>
             </v-row>
           </v-container>
-          <div>
-          </div>
-          {{message}}
         </v-main>
       </v-layout>
     </div>
@@ -68,6 +71,9 @@
       const { createVuetify } = Vuetify
 
       const vuetify = createVuetify()
+
+      const imgData = ref(null)
+      const selectionImgData = ref(null)
 
       createApp({
         setup() {
@@ -87,6 +93,7 @@
             async updated(el, binding, vnode, prevVnode) {
               const imgHandler = await import('./image-handling.js')
               const img = await imgHandler.loadImg(binding.value)
+              imgData.value = img
               imgHandler.drawImageToCanvas(el, img)
             }
           }
