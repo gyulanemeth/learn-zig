@@ -19,7 +19,7 @@
             <v-card v-if="imgData">
               <v-card-subtitle>Selection</v-card-subtitle>
               <v-card-text>
-                <canvas style="border: 1px solid gray; width: 100%"></canvas>
+                <canvas v-draw-image="selectionImgData" style="border: 1px solid gray; width: 100%"></canvas>
               </v-card-text>
             </v-card>
           </template>
@@ -34,17 +34,15 @@
                 density="compact"
                 :elevation="1"
                 >
-                  <v-btn-toggle>
-                    <v-btn icon>
-                      <v-icon>mdi-select-drag</v-icon>
-                    </v-btn>
-                    <v-btn icon>
-                      <v-icon>mdi-brush</v-icon>
-                    </v-btn>
-                    <v-btn icon>
-                      <v-icon>mdi-palette</v-icon>
-                    </v-btn>
-                  </v-btn-toggle>
+                  <v-btn icon>
+                    <v-icon @click="selection.selectAll">mdi-select-drag</v-icon>
+                  </v-btn>
+                  <v-btn icon>
+                    <v-icon>mdi-brush</v-icon>
+                  </v-btn>
+                  <v-btn icon>
+                    <v-icon>mdi-palette</v-icon>
+                  </v-btn>
                   <v-spacer></v-spacer>
                   <v-select
                     style="max-width: 130px;"
@@ -59,7 +57,7 @@
             </v-row>
             <v-row>
               <v-col class="d-flex justify-center align-center">
-                <canvas v-draw-image="imgSrc" :style="{ transform: `scale(${parseInt(toolbar.zoom.value.replace('%', '')) / 100})` }"></canvas>
+                <canvas v-draw-image="imgData" :style="{ transform: `scale(${parseInt(toolbar.zoom.value.replace('%', '')) / 100})` }"></canvas>
               </v-col>
             </v-row>
           </v-container>
@@ -70,31 +68,96 @@
       const { createApp, ref } = Vue
       const { createVuetify } = Vuetify
 
+      let imgHandler = null
+      let selectionHandler = null
+
       const vuetify = createVuetify()
 
       const imgData = ref(null)
       const selectionImgData = ref(null)
 
+      function updateSelectionImgData(selection) {
+        for (let idx = 0; idx < selection.length; idx += 1) {
+          const imgIdx = idx * 4
+          if (selection[idx] === 0) {
+            selectionImgData.value.data[imgIdx] = 0
+            selectionImgData.value.data[imgIdx + 1] = 0
+            selectionImgData.value.data[imgIdx + 2] = 0
+            selectionImgData.value.data[imgIdx + 3] = 0
+          } else {
+            selectionImgData.value.data[imgIdx] = imgData.value.data[imgIdx]
+            selectionImgData.value.data[imgIdx + 1] = imgData.value.data[imgIdx + 1]
+            selectionImgData.value.data[imgIdx + 2] = imgData.value.data[imgIdx + 2]
+            selectionImgData.value.data[imgIdx + 3] = imgData.value.data[imgIdx + 3]
+          }
+        }
+        const temp = selectionImgData.value
+        selectionImgData.value = null
+        selectionImgData.value = temp
+      }
+      function selectAll() {
+        selectionHandler.selectAll()
+      }
+
       createApp({
-        setup() {
+        setup() {        
           const imgSrc = ref('./lena.png')
+          async function init() {
+            imgHandler = await import('./image-handling.js')
+            const createSelectionHandler = await import('./selection.js')
+
+            const img = await imgHandler.loadImg(imgSrc.value)
+            const loaderCanvas = document.createElement('canvas')
+            loaderCanvas.width = img.width
+            loaderCanvas.height = img.height
+            const loaderCanvasContext = loaderCanvas.getContext('2d')
+            loaderCanvasContext.drawImage(img, 0, 0)
+            const loadedImgData = loaderCanvasContext.getImageData(0, 0, img.width, img.height)
+
+            imgData.value = loadedImgData
+
+            const selImg = new ImageData(img.width, img.height)
+            selectionImgData.value = selImg
+            selectionHandler = createSelectionHandler.default(loadedImgData, updateSelectionImgData)
+          }
+
+          init()
+
           const zoom = ref('100%')
           return {
             toolbar: {
               zoom,
               zoomValues: ['100%', '75%', '50%', '25%']
             },
-            imgSrc
 
+            imgSrc,
+            imgData,
+            selectionImgData,
+
+            selection: {
+              selectAll
+            }
           }
         },
         directives: {
           'draw-image': {
-            async updated(el, binding, vnode, prevVnode) {
-              const imgHandler = await import('./image-handling.js')
-              const img = await imgHandler.loadImg(binding.value)
-              imgData.value = img
-              imgHandler.drawImageToCanvas(el, img)
+            created(el, binding, vnode, prevVnode) {
+              const imgData = binding.value
+
+              if (!imgData) {
+                return
+              }
+
+              imgHandler.drawImageToCanvas(el, imgData)
+            },
+            updated(el, binding, vnode, prevVnode) {
+              const imgData = binding.value
+
+              if (!imgData) {
+                return
+              }
+
+              imgHandler.drawImageToCanvas(el, imgData)
             }
           }
         }

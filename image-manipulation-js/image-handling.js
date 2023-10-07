@@ -9,7 +9,11 @@ export function loadImg(url) {
 
 export function drawImageToCanvas(canvas, img) {
   const context = canvas.getContext('2d')
-  canvas.width = img.naturalWidth
-  canvas.height = img.naturalHeight
-  context.drawImage(img, 0, 0)
+  canvas.width = img.width
+  canvas.height = img.height
+  if (img instanceof ImageData) {
+    context.putImageData(img, 0, 0)
+  } else {
+    context.drawImage(img, 0, 0)
+  }
 }

@@ -238,8 +238,6 @@ export default (imgData, drawSelectedPixels = () => {}) => {
         deselectAll,
         invert,
 
-        setSelectionStrategy,
-
         addR,
         addBasedOnHslRange,
         removeBasedOnHslRange,
