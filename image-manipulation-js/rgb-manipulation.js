@@ -1,33 +1,6 @@
-function getPixelIndices(width, x, y) {
-    const rIdx = y * (width * 4) + x * 4
-    const gIdx = rIdx + 1
-    const bIdx = rIdx + 2
-    const aIdx = rIdx + 3
+import { getPixel, setPixel } from './pixels.js'
 
-    return [ rIdx, gIdx, bIdx, aIdx ]
-}
-
-function getPixel(imgData, x, y) {
-    const [ rIdx, gIdx, bIdx, aIdx ] = getPixelIndices(imgData.width, x, y)
-
-    return {
-        r: imgData.data[rIdx],
-        g: imgData.data[gIdx],
-        b: imgData.data[bIdx],
-        a: imgData.data[aIdx]
-    }
-}
-
-function setPixel(imgData, x, y, { r, g, b, a }) {
-    const [ rIdx, gIdx, bIdx, aIdx ] = getPixelIndices(imgData.width, x, y)
-
-    imgData.data[rIdx] = r
-    imgData.data[gIdx] = g
-    imgData.data[bIdx] = b
-    imgData.data[aIdx] = a
-}
-
-export function invert(imgData) {
+export function invert(imgData, selection) {
     const newImgData = new ImageData(imgData.data, imgData.width, imgData.height)
     for (let idx = 0; idx < imgData.data.length; idx += 4) {
         if (selection[idx / 4] != 1) {

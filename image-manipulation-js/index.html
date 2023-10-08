@@ -19,7 +19,7 @@
             <v-card v-if="imgData">
               <v-card-subtitle>Selection</v-card-subtitle>
               <v-card-text>
-                <canvas v-draw-image="selectionImgData" style="border: 1px solid gray; width: 100%"></canvas>
+                <canvas v-draw-image="selectionImgData" style="border: 1px dotted gray; width: 100%"></canvas>
               </v-card-text>
             </v-card>
           </template>
@@ -34,14 +34,47 @@
                 density="compact"
                 :elevation="1"
                 >
-                  <v-btn icon>
-                    <v-icon @click="selection.selectAll">mdi-select-drag</v-icon>
-                  </v-btn>
+                  <v-menu>
+                    <template v-slot:activator="{ props }">
+                      <v-btn icon v-bind="props">
+                        <v-icon v-if="selection.actSelectionTool.value === 'rectangle'">mdi-select-drag</v-icon>
+                        <v-icon v-if="selection.actSelectionTool.value === 'hsl'">mdi-select-color</v-icon>
+                      </v-btn>
+                    </template>
+                    <v-card min-width="300">
+                      <v-card-subtitle>Selection tool</v-card-subtitle>
+                      <v-toolbar flat density="compact">
+                        <v-btn-toggle v-model="selection.actSelectionTool.value" mandatory>
+                          <v-btn icon value="rectangle">
+                            <v-icon>mdi-select-drag</v-icon>
+                          </v-btn>
+                          <v-btn icon value="hsl">
+                            <v-icon>mdi-select-color</v-icon>
+                          </v-btn>
+                        </v-btn-toggle>
+                      </v-toolbar>
+                      <v-card-subtitle>Selection actions</v-card-subtitle>
+                      <v-toolbar flat density="compact">
+                        <v-btn icon>
+                          <v-icon @click="selection.selectAll">mdi-select-all</v-icon>
+                        </v-btn>
+                        <v-btn icon>
+                          <v-icon @click="selection.invert">mdi-select-inverse</v-icon>
+                        </v-btn>
+                        <v-btn icon>
+                          <v-icon @click="selection.deselectAll">mdi-select</v-icon>
+                        </v-btn>
+                      </v-toolbar>
+                    </v-card>
+                  </v-menu>
                   <v-btn icon>
                     <v-icon>mdi-brush</v-icon>
                   </v-btn>
                   <v-btn icon>
                     <v-icon>mdi-palette</v-icon>
+                  </v-btn>
+                  <v-btn icon @click="invert">
+                    <v-icon>mdi-test-tube</v-icon>
                   </v-btn>
                   <v-spacer></v-spacer>
                   <v-select
@@ -57,7 +90,7 @@
             </v-row>
             <v-row>
               <v-col class="d-flex justify-center align-center">
-                <canvas v-draw-image="imgData" :style="{ transform: `scale(${parseInt(toolbar.zoom.value.replace('%', '')) / 100})` }"></canvas>
+                <canvas v-draw-image="imgData" @click="canvasClick" :style="{ transform: `scale(${parseInt(toolbar.zoom.value.replace('%', '')) / 100})` }"></canvas>
               </v-col>
             </v-row>
           </v-container>
@@ -70,6 +103,7 @@
 
       let imgHandler = null
       let selectionHandler = null
+      let rgbManipulation = null
 
       const vuetify = createVuetify()
 
@@ -99,12 +133,37 @@
         selectionHandler.selectAll()
       }
 
+      function invertSelection() {
+        selectionHandler.invert()
+      }
+
+      function deselectAll() {
+        selectionHandler.deselectAll()
+      }
+
+      function invert() {
+        rgbManipulation.invert(imgData.value, selectionHandler.selection)
+        const temp = imgData.value
+        imgData.value = null
+        imgData.value = temp
+      }
+
+      function canvasClick(event) {
+        const canvas = event.target
+        const bb = canvas.getBoundingClientRect()
+        const x = Math.floor( (event.clientX - bb.left) / bb.width * canvas.width )
+        const y = Math.floor( (event.clientY - bb.top) / bb.height * canvas.height )
+
+        selectionHandler.addBasedOnHslRange({ x, y })
+      }
+
       createApp({
         setup() {        
           const imgSrc = ref('./lena.png')
           async function init() {
             imgHandler = await import('./image-handling.js')
             const createSelectionHandler = await import('./selection.js')
+            rgbManipulation = await import('./rgb-manipulation.js')
 
             const img = await imgHandler.loadImg(imgSrc.value)
             const loaderCanvas = document.createElement('canvas')
@@ -124,6 +183,9 @@
           init()
 
           const zoom = ref('100%')
+          const actTool = ref('selection')
+          const actSelectionTool = ref('rectangle')
+
           return {
             toolbar: {
               zoom,
@@ -135,8 +197,16 @@
             selectionImgData,
 
             selection: {
-              selectAll
-            }
+              actSelectionTool,
+
+              selectAll,
+              invert: invertSelection,
+              deselectAll
+            },
+
+            invert,
+
+            canvasClick
           }
         },
         directives: {

@@ -1,3 +1,4 @@
+import { getPixel } from './pixels.js'
 import { rgbToHsl } from './convert.js'
 
 export default (imgData, drawSelectedPixels = () => {}) => {
@@ -30,8 +31,6 @@ export default (imgData, drawSelectedPixels = () => {}) => {
         const lightnessDiff = 0.1
         const saturationDiff = 0.1
 
-
-        const imgData = context.getImageData(0, 0, canvas.width, canvas.height);
         const rgbPx = getPixel(imgData, x, y)
         const hslPx = rgbToHsl(rgbPx)
 
@@ -42,7 +41,7 @@ export default (imgData, drawSelectedPixels = () => {}) => {
         const saturationMin = hslPx.s - saturationDiff
         const saturationMax = hslPx.s + saturationDiff
 
-        const visited = new Uint8ClampedArray(canvas.height * canvas.width)
+        const visited = new Uint8ClampedArray(imgData.height * imgData.width)
         visited.fill(0)
         
         const coordsToVisit = []
@@ -54,15 +53,15 @@ export default (imgData, drawSelectedPixels = () => {}) => {
                 continue
             }
 
-            if (actCoord.x >= canvas.width || actCoord.y >= canvas.height) {
+            if (actCoord.x >= imgData.width || actCoord.y >= imgData.height) {
                 continue
             }
 
-            if (visited[actCoord.y * canvas.width + actCoord.x] === 1) {
+            if (visited[actCoord.y * imgData.width + actCoord.x] === 1) {
                 continue
             }
 
-            visited[actCoord.y * canvas.width + actCoord.x] = value
+            visited[actCoord.y * imgData.width + actCoord.x] = value
 
             const actRgb = getPixel(imgData, actCoord.x, actCoord.y)
             const actHsl = rgbToHsl(actRgb)
@@ -91,7 +90,7 @@ export default (imgData, drawSelectedPixels = () => {}) => {
                 continue
             }
 
-            selection[actCoord.y * canvas.width + actCoord.x] = 1
+            selection[actCoord.y * imgData.width + actCoord.x] = 1
 
             coordsToVisit.push({ y: actCoord.y - 1, x: actCoord.x - 1 })
             coordsToVisit.push({ y: actCoord.y - 1, x: actCoord.x })
@@ -114,11 +113,10 @@ export default (imgData, drawSelectedPixels = () => {}) => {
 
         const start = performance.now()
 
-        const imgData = context.getImageData(0, 0, canvas.width, canvas.height);
         const rgbPx = getPixel(imgData, x, y)
         const hslPx = rgbToHsl(rgbPx)
 
-        const visited = new Uint8ClampedArray(canvas.height * canvas.width)
+        const visited = new Uint8ClampedArray(imgData.height * imgData.width)
         visited.fill(0)
         
         const coordsToVisit = []
@@ -133,15 +131,15 @@ export default (imgData, drawSelectedPixels = () => {}) => {
                 continue
             }
 
-            if (actCoord.x >= canvas.width || actCoord.y >= canvas.height) {
+            if (actCoord.x >= imgData.width || actCoord.y >= imgData.height) {
                 continue
             }
 
-            if (visited[actCoord.y * canvas.width + actCoord.x] === 1) {
+            if (visited[actCoord.y * imgData.width + actCoord.x] === 1) {
                 continue
             }
 
-            visited[actCoord.y * canvas.width + actCoord.x] = value
+            visited[actCoord.y * imgData.width + actCoord.x] = value
 
             let hueMin = hslPx.h - hueDiff
             let hueMax = hslPx.h + hueDiff
@@ -177,7 +175,7 @@ export default (imgData, drawSelectedPixels = () => {}) => {
                 continue
             }
 
-            selection[actCoord.y * canvas.width + actCoord.x] = 1
+            selection[actCoord.y * imgData.width + actCoord.x] = 1
 
             coordsToVisit.push({ coord: { y: actCoord.y - 1, x: actCoord.x - 1 }, hsl: actHsl })
             coordsToVisit.push({ coord: { y: actCoord.y - 1, x: actCoord.x }, hsl: actHsl })
@@ -210,7 +208,7 @@ export default (imgData, drawSelectedPixels = () => {}) => {
 
         while(coordsToVisit.length > 0) {
             const actCoord = coordsToVisit.shift()
-            selection[actCoord.y * canvas.width + actCoord.x] = 1
+            selection[actCoord.y * imgData.width + actCoord.x] = 1
         }
         drawSelectedPixels(selection)
     }
