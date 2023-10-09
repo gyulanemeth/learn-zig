@@ -26,6 +26,22 @@ export default (imgData, drawSelectedPixels = () => {}) => {
         drawSelectedPixels(selection)
     }
 
+    function rectangularSelection(from, to) {
+      const fromX = Math.min(from.x, to.x)
+      const toX = Math.max(from.x, to.x)
+
+      const fromY = Math.min(from.y, to.y)
+      const toY = Math.max(from.y, to.y)
+
+      for (let yIdx = fromY; yIdx < toY; yIdx += 1) {
+        for (let xIdx = fromX; xIdx < toX; xIdx += 1) {
+          selection[yIdx * imgData.width + xIdx] = 1
+        }
+      }
+
+      drawSelectedPixels(selection)
+    }
+
     function setSelectionValueBasedOnHslRange({x, y}, value) {
         const hueDiff = 20
         const lightnessDiff = 0.1
@@ -235,6 +251,8 @@ export default (imgData, drawSelectedPixels = () => {}) => {
         selectAll,
         deselectAll,
         invert,
+
+        rectangularSelection,
 
         addR,
         addBasedOnHslRange,

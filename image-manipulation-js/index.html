@@ -148,15 +148,6 @@
         imgData.value = temp
       }
 
-      function canvasClick(event) {
-        const canvas = event.target
-        const bb = canvas.getBoundingClientRect()
-        const x = Math.floor( (event.clientX - bb.left) / bb.width * canvas.width )
-        const y = Math.floor( (event.clientY - bb.top) / bb.height * canvas.height )
-
-        selectionHandler.addBasedOnHslRange({ x, y })
-      }
-
       createApp({
         setup() {        
           const imgSrc = ref('./lena.png')
@@ -185,6 +176,19 @@
           const zoom = ref('100%')
           const actTool = ref('selection')
           const actSelectionTool = ref('rectangle')
+
+          function canvasClick(event) {
+            const canvas = event.target
+            const bb = canvas.getBoundingClientRect()
+            const x = Math.floor( (event.clientX - bb.left) / bb.width * canvas.width )
+            const y = Math.floor( (event.clientY - bb.top) / bb.height * canvas.height )
+
+            if (actSelectionTool.value === 'rectangle') {
+              selectionHandler.rectangularSelection({ x, y }, { x: x + 100, y: y + 50 })
+            } else {
+              selectionHandler.addBasedOnHslRange({ x, y })
+            }
+          }
 
           return {
             toolbar: {
