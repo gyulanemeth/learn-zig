@@ -12,9 +12,22 @@
     <div id="app">
       <v-layout class="rounded rounded-md">
         <v-navigation-drawer permanent>
-          <v-list>
-            <v-list-item title="Yo"></v-list-item>
-          </v-list>
+              <v-card dense>
+                <v-card-title>RGB Algos</v-card-title>
+                <v-list>
+                  <v-list-item title="Invert" @click="rgbAlgo('invert')"></v-list-item>
+                  <v-list-item title="Grayscale" @click="rgbAlgo('toGrayscale')"></v-list-item>
+                  <v-list-item title="Blur" @click="rgbAlgo('convolution', 'blur')"></v-list-item>
+                  <v-list-item title="Motion blur" @click="rgbAlgo('convolution', 'motion-blur')"></v-list-item>
+                  <v-list-item title="Sharpen" @click="rgbAlgo('convolution', 'sharpen')"></v-list-item>
+                  <v-list-item title="Emboss" @click="rgbAlgo('convolution', 'emboss')"></v-list-item>
+                  <v-list-item title="Edge detection" @click="rgbAlgo('convolution', 'edge-detection')"></v-list-item>
+                  <v-list-item title="Edge detection - Perwitt horizontal" @click="rgbAlgo('convolution', 'edge-detection-perwitt-horizontal')"></v-list-item>
+                  <v-list-item title="Edge detection - Perwitt vertical" @click="rgbAlgo('convolution', 'edge-detection-perwitt-vertical')"></v-list-item>
+                  <v-list-item title="Edge detection - Sobel horizontal" @click="rgbAlgo('convolution', 'edge-detection-sobel-horizontal')"></v-list-item>
+                  <v-list-item title="Edge detection - Sobel vertical" @click="rgbAlgo('convolution', 'edge-detection-sobel-vertical')"></v-list-item>
+                </v-list>
+              </v-card>
           <template v-slot:append>
             <v-card v-if="imgData">
               <v-card-subtitle>Selection</v-card-subtitle>
@@ -72,9 +85,6 @@
                   </v-btn>
                   <v-btn icon>
                     <v-icon>mdi-palette</v-icon>
-                  </v-btn>
-                  <v-btn icon @click="invert">
-                    <v-icon>mdi-test-tube</v-icon>
                   </v-btn>
                   <v-spacer></v-spacer>
                   <v-select
@@ -141,11 +151,9 @@
         selectionHandler.deselectAll()
       }
 
-      function invert() {
-        rgbManipulation.invert(imgData.value, selectionHandler.selection)
-        const temp = imgData.value
-        imgData.value = null
-        imgData.value = temp
+      function rgbAlgo(algoName, algoParams) {
+        const newImgData = rgbManipulation[algoName](imgData.value, selectionHandler.selection, algoParams)
+        imgData.value = newImgData
       }
 
       createApp({
@@ -177,6 +185,7 @@
           const actTool = ref('selection')
           const actSelectionTool = ref('rectangle')
 
+          let firstCoord = null
           function canvasClick(event) {
             const canvas = event.target
             const bb = canvas.getBoundingClientRect()
@@ -184,7 +193,12 @@
             const y = Math.floor( (event.clientY - bb.top) / bb.height * canvas.height )
 
             if (actSelectionTool.value === 'rectangle') {
-              selectionHandler.rectangularSelection({ x, y }, { x: x + 100, y: y + 50 })
+              if (!firstCoord) {
+                firstCoord = { x, y }
+              } else {
+                selectionHandler.rectangularSelection(firstCoord, { x, y })
+                firstCoord = null
+              }
             } else {
               selectionHandler.addBasedOnHslRange({ x, y })
             }
@@ -208,7 +222,7 @@
               deselectAll
             },
 
-            invert,
+            rgbAlgo,
 
             canvasClick
           }

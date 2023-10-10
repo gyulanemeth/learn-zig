@@ -17,7 +17,7 @@ export function invert(imgData, selection) {
     return newImgData
 }
 
-export function toGrayscale(imgData) {
+export function toGrayscale(imgData, selection) {
     const newImgData = new ImageData(imgData.data, imgData.width, imgData.height)
     for (let rIdx = 0; rIdx < imgData.height; rIdx += 1) {
         for (let cIdx = 0; cIdx < imgData.width; cIdx += 1) {
@@ -87,7 +87,11 @@ export const convolutionKernels = {
 }
 
 export function convolution(imgData, selection, kernel) {
-    const newImgData = new ImageData(imgData.data, imgData.width, imgData.height)
+    const newImgData = new ImageData(imgData.width, imgData.height)
+
+    if (typeof kernel === 'string') {
+      kernel = convolutionKernels[kernel]
+    }
 
     const maxX = imgData.width - 1
     const maxY = imgData.height - 1
@@ -123,6 +127,8 @@ export function convolution(imgData, selection, kernel) {
             { x: 1, y: 0 },
             { x: 1, y: 1 }
         ], [kernel[4], kernel[7], kernel[5], kernel[8]]))
+    } else {
+      setPixel(newImgData, 0, 0, getPixel(imgData, 0, 0))
     }
     // top-right
     if (selection[maxX]) {
@@ -133,6 +139,9 @@ export function convolution(imgData, selection, kernel) {
             { x: maxX - 1, y: 1 }
         ], [kernel[4], kernel[7], kernel[3], kernel[6]]))
     }
+    else {
+      setPixel(newImgData, maxX, 0, getPixel(imgData, 0, 0))
+    }
     // bottom-left
     if (selection[maxY * imgData.width]) {
         setPixel(newImgData, 0, maxY, avgPixels(imgData, [
@@ -141,6 +150,8 @@ export function convolution(imgData, selection, kernel) {
             { x: 1, y: maxY },
             { x: 1, y: maxY - 1 }
         ], kernel[4], kernel[1], kernel[5], kernel[2]))
+    } else {
+      setPixel(newImgData, 0, maxY, getPixel(imgData, 0, 0))
     }
     // bottom-right
     if (selection[maxY * imgData.width + maxX]) {
@@ -150,6 +161,8 @@ export function convolution(imgData, selection, kernel) {
             { x: maxX - 1, y: maxY },
             { x: maxX - 1, y: maxY - 1 }
         ], kernel[4], kernel[1], kernel[3], kernel[0]))
+    }  else {
+      setPixel(newImgData, maxX, maxY, getPixel(imgData, 0, 0))
     }
 
     // edges
@@ -167,6 +180,8 @@ export function convolution(imgData, selection, kernel) {
             setPixel(newImgData, cIdx, 0, avgPixels(imgData, topIndices, [
                 kernel[3], kernel[4], kernel[5], kernel[6], kernel[7], kernel[8]
             ]))
+        } else {
+          setPixel(newImgData, cIdx, 0, getPixel(imgData, 0, 0))
         }
 
         if (selection[maxY * imgData.width + cIdx]) {
@@ -181,6 +196,8 @@ export function convolution(imgData, selection, kernel) {
             setPixel(newImgData, cIdx, maxY, avgPixels(imgData, bottomIndices, [
                 kernel[0], kernel[1], kernel[2], kernel[3], kernel[4], kernel[5]
             ]))
+        } else {
+          setPixel(newImgData, cIdx, maxY, getPixel(imgData, 0, 0))
         }
     }
     // left & right
@@ -197,6 +214,8 @@ export function convolution(imgData, selection, kernel) {
             setPixel(newImgData, 0, rIdx, avgPixels(imgData, leftIndices, [
                 kernel[1], kernel[2], kernel[4], kernel[5], kernel[7], kernel[8]
             ]))
+        } else {
+          setPixel(newImgData, 0, rIdx, getPixel(imgData, 0, 0))
         }
 
         if (selection[rIdx * imgData.width + maxX]) {
@@ -211,6 +230,8 @@ export function convolution(imgData, selection, kernel) {
             setPixel(newImgData, maxX, rIdx, avgPixels(imgData, rightIndices, [
                 kernel[0], kernel[1], kernel[3], kernel[4], kernel[6], kernel[7]
             ]))
+        } else {
+          setPixel(newImgData, maxX, rIdx, getPixel(imgData, 0, 0))
         }
     }
 
@@ -218,22 +239,22 @@ export function convolution(imgData, selection, kernel) {
     // middle part
     for (let rIdx = 1; rIdx < maxY; rIdx += 1) {
         for (let cIdx = 1; cIdx < maxX; cIdx += 1) {
-            if (!selection[rIdx * imgData.width + cIdx]) {
-                continue
+            if (selection[rIdx * imgData.width + cIdx]) {
+              const indices = [
+                  { y: rIdx - 1, x: cIdx - 1},
+                  { y: rIdx - 1, x: cIdx},
+                  { y: rIdx - 1, x: cIdx + 1},
+                  { y: rIdx, x: cIdx - 1},
+                  { y: rIdx, x: cIdx},
+                  { y: rIdx, x: cIdx + 1},
+                  { y: rIdx + 1, x: cIdx - 1},
+                  { y: rIdx + 1, x: cIdx},
+                  { y: rIdx + 1, x: cIdx + 1}
+              ]
+              setPixel(newImgData, cIdx, rIdx, avgPixels(imgData, indices, kernel))
+            } else {
+              setPixel(newImgData, cIdx, rIdx, getPixel(imgData, cIdx, rIdx))
             }
-
-            const indices = [
-                { y: rIdx - 1, x: cIdx - 1},
-                { y: rIdx - 1, x: cIdx},
-                { y: rIdx - 1, x: cIdx + 1},
-                { y: rIdx, x: cIdx - 1},
-                { y: rIdx, x: cIdx},
-                { y: rIdx, x: cIdx + 1},
-                { y: rIdx + 1, x: cIdx - 1},
-                { y: rIdx + 1, x: cIdx},
-                { y: rIdx + 1, x: cIdx + 1}
-            ]
-            setPixel(newImgData, cIdx, rIdx, avgPixels(imgData, indices, kernel))
         }
     }
 
