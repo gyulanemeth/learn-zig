@@ -12,9 +12,10 @@
     <div id="app">
       <v-layout class="rounded rounded-md">
         <v-navigation-drawer permanent>
-              <v-card dense>
-                <v-card-title>RGB Algos</v-card-title>
-                <v-list>
+          <v-expansion-panels dense variant="accordion">
+            <v-expansion-panel title="RGB Algos">
+              <v-expansion-panel-text dense>
+                <v-list dense>
                   <v-list-item title="Invert" @click="rgbAlgo('invert')"></v-list-item>
                   <v-list-item title="Grayscale" @click="rgbAlgo('toGrayscale')"></v-list-item>
                   <v-list-item title="Blur" @click="rgbAlgo('convolution', 'blur')"></v-list-item>
@@ -27,7 +28,21 @@
                   <v-list-item title="Edge detection - Sobel horizontal" @click="rgbAlgo('convolution', 'edge-detection-sobel-horizontal')"></v-list-item>
                   <v-list-item title="Edge detection - Sobel vertical" @click="rgbAlgo('convolution', 'edge-detection-sobel-vertical')"></v-list-item>
                 </v-list>
-              </v-card>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+            <v-expansion-panel title="HSL Algos">
+              <v-expansion-panel-text>
+                <v-list>
+                  <v-list-item @click="addHslToSelection(1, 0, 0)">Add Hue</v-list-item>
+                  <v-list-item @click="addHslToSelection(-1, 0, 0)">Remove Hue</v-list-item>
+                  <v-list-item @click="addHslToSelection(0, 0.01, 0)">Add Saturation</v-list-item>
+                  <v-list-item @click="addHslToSelection(0, -0.01, 0)">Remove Saturation</v-list-item>
+                  <v-list-item @click="addHslToSelection(0, 0, 0.01)">Add Light</v-list-item>
+                  <v-list-item @click="addHslToSelection(0, 0, -0.01)">Remove Light</v-list-item>
+                </v-list>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+          </v-expansion-panels>
           <template v-slot:append>
             <v-card v-if="imgData">
               <v-card-subtitle>Selection</v-card-subtitle>
@@ -114,6 +129,7 @@
       let imgHandler = null
       let selectionHandler = null
       let rgbManipulation = null
+      let hslManipulation = null
 
       const vuetify = createVuetify()
 
@@ -156,6 +172,11 @@
         imgData.value = newImgData
       }
 
+      function addHslToSelection(h, s, l) {
+        const newImgData = hslManipulation.addHslaToSelection(imgData.value, selectionHandler.selection, { h, s, l })
+        imgData.value = newImgData
+      }
+
       createApp({
         setup() {        
           const imgSrc = ref('./lena.png')
@@ -163,6 +184,7 @@
             imgHandler = await import('./image-handling.js')
             const createSelectionHandler = await import('./selection.js')
             rgbManipulation = await import('./rgb-manipulation.js')
+            hslManipulation = await import('./hsl-manipulation.js')
 
             const img = await imgHandler.loadImg(imgSrc.value)
             const loaderCanvas = document.createElement('canvas')
@@ -223,6 +245,7 @@
             },
 
             rgbAlgo,
+            addHslToSelection,
 
             canvasClick
           }
