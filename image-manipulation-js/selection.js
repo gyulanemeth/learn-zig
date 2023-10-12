@@ -123,9 +123,9 @@ export default (imgData, drawSelectedPixels = () => {}) => {
     }
 
     function setSelectionBasedOnHeighbouringHslRange({x, y}, value) {
-        const hueDiff = 30
+        const hueDiff = 10
         const lightnessDiff = 0.2
-        const saturationDiff = 0.25
+        const saturationDiff = 0.2
 
         const start = performance.now()
 

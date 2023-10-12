@@ -33,8 +33,8 @@
             <v-expansion-panel title="HSL Algos">
               <v-expansion-panel-text>
                 <v-list>
-                  <v-list-item @click="addHslToSelection(1, 0, 0)">Add Hue</v-list-item>
-                  <v-list-item @click="addHslToSelection(-1, 0, 0)">Remove Hue</v-list-item>
+                  <v-list-item @click="addHslToSelection(10, 0, 0)">Add Hue</v-list-item>
+                  <v-list-item @click="addHslToSelection(-10, 0, 0)">Remove Hue</v-list-item>
                   <v-list-item @click="addHslToSelection(0, 0.01, 0)">Add Saturation</v-list-item>
                   <v-list-item @click="addHslToSelection(0, -0.01, 0)">Remove Saturation</v-list-item>
                   <v-list-item @click="addHslToSelection(0, 0, 0.01)">Add Light</v-list-item>
@@ -102,6 +102,9 @@
                     <v-icon>mdi-palette</v-icon>
                   </v-btn>
                   <v-spacer></v-spacer>
+                  <v-btn @click="download">
+                    <v-icon>mdi-download</v-icon> Download
+                  </v-btn>
                   <v-select
                     style="max-width: 130px;"
                     v-model="toolbar.zoom.value"
@@ -115,7 +118,7 @@
             </v-row>
             <v-row>
               <v-col class="d-flex justify-center align-center">
-                <canvas v-draw-image="imgData" @click="canvasClick" :style="{ transform: `scale(${parseInt(toolbar.zoom.value.replace('%', '')) / 100})` }"></canvas>
+                <canvas ref="drawingCanvas" v-draw-image="imgData" @click="canvasClick" :style="{ transform: `scale(${parseInt(toolbar.zoom.value.replace('%', '')) / 100})` }"></canvas>
               </v-col>
             </v-row>
           </v-container>
@@ -135,6 +138,8 @@
 
       const imgData = ref(null)
       const selectionImgData = ref(null)
+
+      const drawingCanvas = ref(null)
 
       function updateSelectionImgData(selection) {
         for (let idx = 0; idx < selection.length; idx += 1) {
@@ -179,7 +184,7 @@
 
       createApp({
         setup() {        
-          const imgSrc = ref('./lena.png')
+          const imgSrc = ref('./woman-red-hat.jpeg')
           async function init() {
             imgHandler = await import('./image-handling.js')
             const createSelectionHandler = await import('./selection.js')
@@ -222,8 +227,19 @@
                 firstCoord = null
               }
             } else {
-              selectionHandler.addBasedOnHslRange({ x, y })
+              selectionHandler.addBasedOnNeighboringHslRange({ x, y })
             }
+          }
+
+          function download() {
+            let imgData = drawingCanvas.value.toDataURL('image/png')
+
+            const a = document.createElement('a')
+            a.href = imgData
+            a.download = `test.png`
+            document.body.appendChild(a)
+            a.click()
+            document.body.removeChild(a)
           }
 
           return {
@@ -247,7 +263,11 @@
             rgbAlgo,
             addHslToSelection,
 
-            canvasClick
+            canvasClick,
+
+            download,
+
+            drawingCanvas
           }
         },
         directives: {
