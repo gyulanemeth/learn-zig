@@ -44,7 +44,7 @@
             </v-expansion-panel>
           </v-expansion-panels>
           <template v-slot:append>
-            <v-card v-if="imgData">
+            <v-card v-if="selectionImgData">
               <v-card-subtitle>Selection</v-card-subtitle>
               <v-card-text>
                 <canvas v-draw-image="selectionImgData" style="border: 1px dotted gray; width: 100%"></canvas>
@@ -53,7 +53,7 @@
           </template>
         </v-navigation-drawer>
     
-        <v-main class="d-flex align-center justify-center" style="min-height: 300px;">
+        <v-main style="min-height: 300px;">
           <v-container>
             <v-row>
               <v-col>
@@ -118,7 +118,8 @@
             </v-row>
             <v-row>
               <v-col class="d-flex justify-center align-center">
-                <canvas ref="drawingCanvas" v-draw-image="imgData" @click="canvasClick" :style="{ transform: `scale(${parseInt(toolbar.zoom.value.replace('%', '')) / 100})` }"></canvas>
+                <canvas v-if="imgData" ref="drawingCanvas" v-draw-image="imgData" @click="canvasClick" :style="{ transform: `scale(${parseInt(toolbar.zoom.value.replace('%', '')) / 100})` }"></canvas>
+                <input v-else type="file" @change="loadImage">
               </v-col>
             </v-row>
           </v-container>
@@ -185,13 +186,33 @@
       createApp({
         setup() {        
           const imgSrc = ref('./woman-red-hat.jpeg')
+          let createSelectionHandler = null
           async function init() {
             imgHandler = await import('./image-handling.js')
-            const createSelectionHandler = await import('./selection.js')
+            createSelectionHandler = await import('./selection.js')
             rgbManipulation = await import('./rgb-manipulation.js')
             hslManipulation = await import('./hsl-manipulation.js')
+          }
 
-            const img = await imgHandler.loadImg(imgSrc.value)
+          init()
+
+          async function loadImage(event) {
+            console.log(event)
+
+            function loadImgFromInput(input) {
+              return new Promise(resolve => {
+                const img = new Image()
+                img.onload = () => {
+                  resolve(img)
+                }
+                img.src = URL.createObjectURL(input.files[0])
+              })
+            }
+            
+            // const img = await imgHandler.loadImg(imgSrc.value)
+
+            const img = await loadImgFromInput(event.target)
+
             const loaderCanvas = document.createElement('canvas')
             loaderCanvas.width = img.width
             loaderCanvas.height = img.height
@@ -205,8 +226,6 @@
             selectionImgData.value = selImg
             selectionHandler = createSelectionHandler.default(loadedImgData, updateSelectionImgData)
           }
-
-          init()
 
           const zoom = ref('100%')
           const actTool = ref('selection')
@@ -248,7 +267,6 @@
               zoomValues: ['100%', '75%', '50%', '25%']
             },
 
-            imgSrc,
             imgData,
             selectionImgData,
 
@@ -267,7 +285,9 @@
 
             download,
 
-            drawingCanvas
+            drawingCanvas,
+
+            loadImage
           }
         },
         directives: {
