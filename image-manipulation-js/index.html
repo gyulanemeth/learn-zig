@@ -117,8 +117,8 @@
               </v-col>
             </v-row>
             <v-row>
-              <v-col class="d-flex justify-center align-center">
-                <canvas v-if="imgData" ref="drawingCanvas" v-draw-image="imgData" @click="canvasClick" :style="{ transform: `scale(${parseInt(toolbar.zoom.value.replace('%', '')) / 100})` }"></canvas>
+              <v-col class="d-flex justify-center align-start">
+                <canvas v-if="imgData" ref="drawingCanvas" v-draw-image="imgData" @click="canvasClick" :style="{ transform: `translate(0, -${(100 - parseInt(toolbar.zoom.value)) / 2}%) scale(${parseInt(toolbar.zoom.value.replace('%', '')) / 100})` }"></canvas>
                 <input v-else type="file" @change="loadImage">
               </v-col>
             </v-row>
