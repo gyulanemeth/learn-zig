@@ -64,7 +64,7 @@
                 >
                   <v-menu>
                     <template v-slot:activator="{ props }">
-                      <v-btn icon v-bind="props">
+                      <v-btn icon v-bind="props" :color="actTool.value === 'selection' ? 'primary' : 'default'">
                         <v-icon v-if="selection.actSelectionTool.value === 'rectangle'">mdi-select-drag</v-icon>
                         <v-icon v-if="selection.actSelectionTool.value === 'hsl'">mdi-select-color</v-icon>
                       </v-btn>
@@ -87,14 +87,20 @@
                           <v-icon @click="selection.selectAll">mdi-select-all</v-icon>
                         </v-btn>
                         <v-btn icon>
+                          <v-icon @click="selection.dilate">mdi-plus-circle-outline</v-icon>
+                        </v-btn>
+                        <v-btn icon>
                           <v-icon @click="selection.invert">mdi-select-inverse</v-icon>
                         </v-btn>
                         <v-btn icon>
-                          <v-icon @click="selection.deselectAll">mdi-select</v-icon>
+                          <v-icon @click="selection.deselectAll">mdi-selection-remove</v-icon>
                         </v-btn>
                       </v-toolbar>
                     </v-card>
                   </v-menu>
+                  <v-btn icon>
+                    <v-icon>mdi-eyedropper-variant</v-icon>
+                  </v-btn>
                   <v-btn icon>
                     <v-icon>mdi-brush</v-icon>
                   </v-btn>
@@ -163,6 +169,10 @@
       }
       function selectAll() {
         selectionHandler.selectAll()
+      }
+
+      function dilate() {
+        selectionHandler.dilate()
       }
 
       function invertSelection() {
@@ -267,6 +277,8 @@
               zoomValues: ['100%', '75%', '50%', '25%']
             },
 
+            actTool,
+
             imgData,
             selectionImgData,
 
@@ -274,6 +286,7 @@
               actSelectionTool,
 
               selectAll,
+              dilate,
               invert: invertSelection,
               deselectAll
             },

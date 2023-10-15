@@ -245,6 +245,163 @@ export default (imgData, drawSelectedPixels = () => {}) => {
         setSelectionBasedOnHeighbouringHslRange({x, y}, 0)
     }
 
+    function sumCoords(coords) {
+      let sum = 0
+
+      for (let idx = 0; idx < coords.length; idx += 1) {
+        sum += selection[coords[idx].y * imgData.width + coords[idx].x]
+      }
+
+      return sum
+    }
+
+    function dilate() {
+      const newSelection = new Uint8ClampedArray(imgData.height * imgData.width)
+      const maxY = imgData.height - 1
+      const maxX = imgData.width - 1
+
+      // top-left corner: (0, 0)
+      const tlSum = sumCoords([
+        { x: 0, y: 1 },
+        { x: 1, y: 0 },
+        { x: 1, y: 1 }
+      ])
+
+      if (tlSum > 1) {
+        selection[0] = 1
+      } else {
+        selection[0] = 0
+      }
+
+      // top-right corner: (maxX, 0)
+      const trSum = sumCoords([
+        { x: maxX, y: 1 },
+        { x: maxX - 1, y: 0 },
+        { x: maxX - 1, y: 1 }
+      ])
+
+      if (trSum > 1) {
+        selection[0] = 1
+      } else {
+        selection[0] = 0
+      }
+
+      // bottom-left corner: (0, maxY)
+      const blSum = sumCoords([
+        { x: 0, y: maxY },
+        { x: 0, y: maxY - 1 },
+        { x: 1, y: maxY },
+        { x: 1, y: maxY - 1 }
+      ])
+
+      if (blSum > 1) {
+        selection[0] = 1
+      } else {
+        selection[0] = 0
+      }
+
+      // bottom-right corner: (maxX, maxY)
+      const brSum = sumCoords([
+        { x: maxX, y: maxY },
+        { x: maxX, y: maxY - 1 },
+        { x: maxX - 1, y: maxY },
+        { x: maxX - 1, y: maxY - 1 }
+      ])
+
+      if (brSum > 1) {
+        selection[0] = 1
+      } else {
+        selection[0] = 0
+      }
+
+      // top & bottom edges
+      for (let cIdx = 1; cIdx < maxX; cIdx += 1) {
+        const topSum = sumCoords([
+          { x: cIdx - 1, y: 0 },
+          { x: cIdx + 1, y: 0 },
+          { x: cIdx - 1, y: 1 },
+          { x: cIdx, y: 1 },
+          { x: cIdx + 1, y: 1 }
+        ])
+
+        if (topSum > 3) {
+          newSelection[cIdx] = 1
+        } else {
+          newSelection[cIdx] = 0
+        }
+
+        const bottomSum = sumCoords([
+          { x: cIdx - 1, y: maxY - 1 },
+          { x: cIdx, y: maxY - 1 },
+          { x: cIdx + 1, y: maxY - 1 },
+          { x: cIdx - 1, y: maxY },
+          { x: cIdx + 1, y: maxY }
+        ])
+
+        if (bottomSum > 3) {
+          newSelection[maxY * imgData.width + cIdx] = 1
+        } else {
+          newSelection[maxY * imgData.width + cIdx] = 0
+        }
+      }
+
+      // left & right edges
+      for (let rIdx = 0; rIdx < maxY; rIdx += 1) {
+        const leftSum = sumCoords([
+          { x: 0, y: rIdx - 1 },
+          { x: 0, y: rIdx },
+          { x: 0, y: rIdx + 1 },
+          { x: 1, y: rIdx - 1 },
+          { x: 1, y: rIdx },
+          { x: 1, y: rIdx + 1 }
+        ])
+
+        if (leftSum > 3) {
+          newSelection[rIdx * imgData.width] = 1
+        } else {
+          newSelection[rIdx * imgData.width] = 0
+        }
+
+        const rightSum = sumCoords([
+          { x: maxX - 1, y: rIdx - 1 },
+          { x: maxX - 1, y: rIdx },
+          { x: maxX - 1, y: rIdx + 1 },
+          { x: maxX, y: rIdx - 1 },
+          { x: maxX, y: rIdx },
+          { x: maxX, y: rIdx + 1 }
+        ])
+
+        if (leftSum > 3) {
+          newSelection[rIdx * imgData.width + maxX] = 1
+        } else {
+          newSelection[rIdx * imgData.width + maxX] = 0
+        }
+      }
+
+      for (let rIdx = 1; rIdx < maxY; rIdx += 1) {
+        for (let cIdx = 1; cIdx < maxX; cIdx += 1) {
+          const sum = sumCoords([
+            { y: rIdx - 1, x: cIdx - 1},
+            { y: rIdx - 1, x: cIdx},
+            { y: rIdx - 1, x: cIdx + 1},
+            { y: rIdx, x: cIdx - 1},
+            { y: rIdx, x: cIdx + 1},
+            { y: rIdx + 1, x: cIdx - 1},
+            { y: rIdx + 1, x: cIdx},
+            { y: rIdx + 1, x: cIdx + 1}
+          ])
+
+          if (sum > 3) {
+            newSelection[rIdx * imgData.width + cIdx] = 1
+          } else {
+            newSelection[rIdx * imgData.width + cIdx] = 0
+          }
+        }
+      }
+      selection.set(newSelection)
+      drawSelectedPixels(selection)
+    }
+
     return {
         selection,
 
@@ -258,6 +415,8 @@ export default (imgData, drawSelectedPixels = () => {}) => {
         addBasedOnHslRange,
         removeBasedOnHslRange,
         addBasedOnNeighboringHslRange,
-        removeBasedOnNeighbouringHslRange
+        removeBasedOnNeighbouringHslRange,
+
+        dilate
     }
 }
