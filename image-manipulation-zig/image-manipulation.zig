@@ -1,8 +1,14 @@
 const std = @import("std");
 
+const convert = @import("./convert.zig");
+
+const RgbPixel = convert.RgbPixel;
+const HslPixel = convert.HslPixel;
+const rgb_to_hsl = convert.rgb_to_hsl;
+const hsl_to_rgb = convert.hsl_to_rgb;
+
+
 const ImageData = struct { n_rows: u32, n_cols: u32, data: []u8 };
-const RgbPixel = struct { r: u8, g: u8, b: u8, a: u8 };
-const HslPixel = struct { h: f32, s: f32, l: f32, a: u8 };
 const Coord = struct { x: u32, y: u32 };
 
 extern fn debug(r_idx: usize, c_idx: usize) void;
@@ -333,81 +339,6 @@ export fn edge_detection_sobel_vertical() void {
     };
 
     convolution(@constCast(&kernel));
-}
-
-fn rgb_to_hsl(rgb_pixel: RgbPixel) HslPixel {
-    const r: f32 = @floatFromInt(rgb_pixel.r);
-    const g: f32 = @floatFromInt(rgb_pixel.g);
-    const b: f32 = @floatFromInt(rgb_pixel.b);
-    const max = @max(@max(r, g), b);
-    const min = @min(@min(r, g), b);
-    const diff = (max - min) / 255;
-
-    const l = (max + min) / 510;
-    const s = if (l == 0) 0 else diff / (1 - std.math.fabs(2 * l - 1));
-
-    var h: f32 = 0.0;
-
-    if (s > std.math.floatEps(f32)) {
-        h = std.math.radiansToDegrees(f32, std.math.acos((r - 0.5 * g - 0.5 * b) / std.math.sqrt(r * r + g * g + b * b - r * g - r * b - g * b)));
-
-        if (b > g) {
-            h = 360 - h;
-        }
-    }
-
-    return HslPixel{ .h = h, .s = s, .l = l, .a = rgb_pixel.a };
-}
-
-fn hsl_to_rgb(hsl_pixel: HslPixel) RgbPixel {
-    const h = hsl_pixel.h;
-    const s = hsl_pixel.s;
-    const l = hsl_pixel.l;
-    
-    const diff = s * (1 - std.math.fabs(2 * l - 1));
-    const min = 255 * (l - 0.5 * diff);
-
-    const x = diff * (1 - std.math.fabs(@mod((h / 60.0), 2) - 1));
-
-    const val1 = 255 * diff + min;
-    const val2 = 255 * x + min;
-
-    var r: f32 = 0.0;
-    var g: f32 = 0.0;
-    var b: f32 = 0.0;
-
-    if (h < 60) {
-        r = val1;
-        g = val2;
-        b = min;
-    } else if (h < 120) {
-        r = val2;
-        g = val1;
-        b = min;
-    } else if (h < 180) {
-        r = min;
-        g = val1;
-        b = val2;
-    } else if (h < 240) {
-        r = min;
-        g = val2;
-        b = val1;
-    } else if (h < 300) {
-        r = val2;
-        g = min;
-        b = val1;
-    } else {
-        r = val1;
-        g = min;
-        b = val2;
-    }
-
-    return RgbPixel{
-        .r = @intFromFloat(r),
-        .g = @intFromFloat(g),
-        .b = @intFromFloat(b),
-        .a = hsl_pixel.a
-    };
 }
 
 export fn rotate_hue_by_10_deg() void {
