@@ -1,12 +1,12 @@
 const std = @import("std");
 
 pub const RgbPixel = struct { r: u8, g: u8, b: u8, a: u8 };
-pub const HslPixel = struct { h: f32, s: f32, l: f32, a: u8 };
+pub const HslPixel = struct { h: f64, s: f64, l: f64, a: u8 };
 
 pub fn rgb_to_hsl(rgb_pixel: RgbPixel) HslPixel {
-    const r: f32 = @floatFromInt(rgb_pixel.r);
-    const g: f32 = @floatFromInt(rgb_pixel.g);
-    const b: f32 = @floatFromInt(rgb_pixel.b);
+    const r: f64 = @floatFromInt(rgb_pixel.r);
+    const g: f64 = @floatFromInt(rgb_pixel.g);
+    const b: f64 = @floatFromInt(rgb_pixel.b);
     const max = @max(@max(r, g), b);
     const min = @min(@min(r, g), b);
     const diff = (max - min) / 255;
@@ -14,10 +14,10 @@ pub fn rgb_to_hsl(rgb_pixel: RgbPixel) HslPixel {
     const l = (max + min) / 510;
     const s = if (l == 0) 0 else diff / (1 - std.math.fabs(2 * l - 1));
 
-    var h: f32 = 0.0;
+    var h: f64 = 0.0;
 
-    if (s > std.math.floatEps(f32)) {
-        h = std.math.radiansToDegrees(f32, std.math.acos((r - 0.5 * g - 0.5 * b) / std.math.sqrt(r * r + g * g + b * b - r * g - r * b - g * b)));
+    if (s > std.math.floatEps(f64)) {
+        h = std.math.radiansToDegrees(f64, std.math.acos((r - 0.5 * g - 0.5 * b) / std.math.sqrt(r * r + g * g + b * b - r * g - r * b - g * b)));
 
         if (b > g) {
             h = 360 - h;
@@ -40,9 +40,9 @@ pub fn hsl_to_rgb(hsl_pixel: HslPixel) RgbPixel {
     const val1 = 255 * diff + min;
     const val2 = 255 * x + min;
 
-    var r: f32 = 0.0;
-    var g: f32 = 0.0;
-    var b: f32 = 0.0;
+    var r: f64 = 0.0;
+    var g: f64 = 0.0;
+    var b: f64 = 0.0;
 
     if (h < 60) {
         r = val1;
@@ -80,4 +80,26 @@ test "RGB -> HSL" {
     try expect(eql(rgb_to_hsl(RgbPixel{ .r = 255, .g = 0, .b = 0, .a = 255 }), HslPixel{ .h = 0.0, .s = 1.0, .l = 0.5, .a = 255 }));
     try expect(eql(rgb_to_hsl(RgbPixel{ .r = 0, .g = 255, .b = 0, .a = 255 }), HslPixel{ .h = 120.0, .s = 1.0, .l = 0.5, .a = 255 }));
     try expect(eql(rgb_to_hsl(RgbPixel{ .r = 0, .g = 0, .b = 255, .a = 255 }), HslPixel{ .h = 240.0, .s = 1.0, .l = 0.5, .a = 255 }));
+}
+
+test "HSL -> RGB" {
+    try expect(eql(hsl_to_rgb(HslPixel{ .h = 0.0, .s = 1.0, .l = 0.5, .a = 255 }), RgbPixel{ .r = 255, .g = 0, .b = 0, .a = 255 }));
+    try expect(eql(hsl_to_rgb(HslPixel{ .h = 120.0, .s = 1.0, .l = 0.5, .a = 255 }), RgbPixel{ .r = 0, .g = 255, .b = 0, .a = 255 }));
+    try expect(eql(hsl_to_rgb(HslPixel{ .h = 240.0, .s = 1.0, .l = 0.5, .a = 255 }), RgbPixel{ .r = 0, .g = 0, .b = 255, .a = 255 }));
+}
+
+test "RGB -> HSL -> RGB equality" {
+  for(0..255) |r| {
+    for(0..255) |g| {
+      for(0..255) |b| {
+        const actRgb = RgbPixel{.r = @intCast(r), .g = @intCast(g), .b = @intCast(b), .a = 255 };
+        const actHsl = rgb_to_hsl(actRgb);
+        const actRgb2 = hsl_to_rgb(actHsl);
+        std.debug.print("rgb1: ({d}, {d}, {d}) rgb2: ({d}, {d}, {d})\n", .{actRgb.r, actRgb.g, actRgb.b, actRgb2.r, actRgb2.g, actRgb2.b});
+        expect(eql(actRgb, actRgb2)) catch |err| {
+          return err;
+        };
+      }
+    }
+  }
 }
