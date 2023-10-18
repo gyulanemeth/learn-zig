@@ -7,12 +7,12 @@ pub fn rgb_to_hsl(rgb_pixel: RgbPixel) HslPixel {
     const r: f64 = @floatFromInt(rgb_pixel.r);
     const g: f64 = @floatFromInt(rgb_pixel.g);
     const b: f64 = @floatFromInt(rgb_pixel.b);
-    const max = @max(@max(r, g), b);
-    const min = @min(@min(r, g), b);
-    const diff = (max - min) / 255;
+    const max = @max(r, g, b);
+    const min = @min(r, g, b);
+    const diff = (max - min) / 255.0;
 
-    const l = (max + min) / 510;
-    const s = if (l == 0) 0 else diff / (1 - std.math.fabs(2 * l - 1));
+    const l = (max + min) / 510.0;
+    const s = if (l < std.math.floatEps(f64)) 0 else diff / (1.0 - std.math.fabs(2.0 * l - 1.0));
 
     var h: f64 = 0.0;
 
@@ -20,7 +20,7 @@ pub fn rgb_to_hsl(rgb_pixel: RgbPixel) HslPixel {
         h = std.math.radiansToDegrees(f64, std.math.acos((r - 0.5 * g - 0.5 * b) / std.math.sqrt(r * r + g * g + b * b - r * g - r * b - g * b)));
 
         if (b > g) {
-            h = 360 - h;
+            h = 360.0 - h;
         }
     }
 
@@ -70,6 +70,12 @@ pub fn hsl_to_rgb(hsl_pixel: HslPixel) RgbPixel {
         b = val2;
     }
 
+    std.debug.print("rgb in progress: ({d}, {d}, {d})\n", .{r, g, b});
+    r = std.math.round(r);
+    g = std.math.round(g);
+    b = std.math.round(b);
+
+
     return RgbPixel{ .r = @intFromFloat(r), .g = @intFromFloat(g), .b = @intFromFloat(b), .a = hsl_pixel.a };
 }
 
@@ -95,7 +101,7 @@ test "RGB -> HSL -> RGB equality" {
         const actRgb = RgbPixel{.r = @intCast(r), .g = @intCast(g), .b = @intCast(b), .a = 255 };
         const actHsl = rgb_to_hsl(actRgb);
         const actRgb2 = hsl_to_rgb(actHsl);
-        std.debug.print("rgb1: ({d}, {d}, {d}) rgb2: ({d}, {d}, {d})\n", .{actRgb.r, actRgb.g, actRgb.b, actRgb2.r, actRgb2.g, actRgb2.b});
+        std.debug.print("rgb1: ({d}, {d}, {d}) rgb2: ({d}, {d}, {d}) hsl: ({d}, {d}, {d})\n", .{actRgb.r, actRgb.g, actRgb.b, actRgb2.r, actRgb2.g, actRgb2.b, actHsl.h, actHsl.s, actHsl.l});
         expect(eql(actRgb, actRgb2)) catch |err| {
           return err;
         };
