@@ -1,18 +1,20 @@
 const RgbPixel = @import("./convert.zig").RgbPixel;
 
+pub const Coord = struct { x: u32, y: u32 };
+
 pub const ImageData = struct {
-  n_rows: u32,
-  n_cols: u32,
+  height: u32,
+  width: u32,
   data: []u8,
 
-  fn get_pixel(self: *ImageData, r_idx: usize, c_idx: usize) RgbPixel {
-    const red_idx = (r_idx * self.n_cols + c_idx) * 4;
+  fn get_pixel(self: *ImageData, coord: Coord) RgbPixel {
+    const red_idx = (coord.y * self.width + coord.x) * 4;
 
     return RgbPixel{ .r = self.data[red_idx], .g = self.data[red_idx + 1], .b = self.data[red_idx + 2], .a = self.data[red_idx + 3] };
   }
 
-  fn set_pixel(self: *ImageData, r_idx: usize, c_idx: usize, rgb_pixel: RgbPixel) void {
-    const red_idx: usize = (r_idx * self.n_cols + c_idx) * 4;
+  fn set_pixel(self: *ImageData, coord: Coord, rgb_pixel: RgbPixel) void {
+    const red_idx: usize = (coord.y * self.width + coord.x) * 4;
     self.data[red_idx] = rgb_pixel.r;
     self.data[red_idx + 1] = rgb_pixel.g;
     self.data[red_idx + 2] = rgb_pixel.b;
@@ -27,23 +29,23 @@ test "get_pixel" {
     for (0..byteArray.len) |idx| {
       byteArray[idx] = @intCast(idx);
     }
-    var imgData = ImageData{ .n_cols = 2, .n_rows = 3, .data = byteArray[0..byteArray.len] };
+    var imgData = ImageData{ .width = 3, .height = 2, .data = byteArray[0..byteArray.len] };
 
-    const rgb_pixel = imgData.get_pixel(1, 2);
-    try expect(rgb_pixel.r == 16);
-    try expect(rgb_pixel.g == 17);
-    try expect(rgb_pixel.b == 18);
-    try expect(rgb_pixel.a == 19);
+    const rgb_pixel = imgData.get_pixel(Coord{ .x = 2, .y = 1 });
+    try expect(rgb_pixel.r == 20);
+    try expect(rgb_pixel.g == 21);
+    try expect(rgb_pixel.b == 22);
+    try expect(rgb_pixel.a == 23);
 }
 
 test "set_pixel" {
   var byteArray = [1]u8{0} ** 24;
 
-  var imgData = ImageData{ .n_cols = 2, .n_rows = 3, .data = byteArray[0..byteArray.len] };
+  var imgData = ImageData{ .width = 3, .height = 2, .data = byteArray[0..byteArray.len] };
 
-  imgData.set_pixel(0, 2, RgbPixel{ .r = 200, .g = 50, .b = 100, .a = 255 });
+  imgData.set_pixel(Coord{ .x = 2, .y = 0 }, RgbPixel{ .r = 200, .g = 50, .b = 100, .a = 255 });
 
-  var rgb_pixel = imgData.get_pixel(0, 2);
+  var rgb_pixel = imgData.get_pixel(Coord{ .x = 2, .y = 0 });
 
   try expect(rgb_pixel.r == 200);
   try expect(rgb_pixel.g == 50);
