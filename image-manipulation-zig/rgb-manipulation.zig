@@ -1,6 +1,15 @@
-const ImageData = @import("./ImageData.zig");
+const std = @import("std");
+const expect = std.testing.expect;
+const eql = std.mem.eql;
 
-pub fn invert(current_img: ImageData, next_img: ImageData, swap_states: *const fn () void) void {
+const img_data = @import("./ImageData.zig");
+const ImageData = img_data.ImageData;
+const Coord = img_data.Coord;
+
+const convert = @import("./convert.zig");
+const RgbPixel = convert.RgbPixel;
+
+pub fn invert(current_img: ImageData, next_img: ImageData) void {
     var idx: u32 = 0;
     while (idx < current_img.data.len) : (idx += 4) {
         next_img.data[idx] = 255 - current_img.data[idx];
@@ -8,10 +17,23 @@ pub fn invert(current_img: ImageData, next_img: ImageData, swap_states: *const f
         next_img.data[idx + 2] = 255 - current_img.data[idx + 2];
         next_img.data[idx + 3] = current_img.data[idx + 3];
     }
-    swap_states();
 }
 
-pub fn to_grayscale(current_img: ImageData, next_img: ImageData, swap_states: *const fn () void) void {
+test "invert" {
+    var data1: [16]u8 = .{ 10, 10, 10, 255, 20, 20, 20, 250, 30, 20, 10, 100, 10, 20, 30, 50 };
+    var data2: [16]u8 = .{0} ** 16;
+
+    var img1 = ImageData{ .width = 2, .height = 2, .data = data1[0..data1.len] };
+    var img2 = ImageData{ .width = 2, .height = 2, .data = data2[0..data2.len] };
+
+    invert(img1, img2);
+
+    var expected_data: [16]u8 = .{ 245, 245, 245, 255, 235, 235, 235, 250, 225, 235, 245, 100, 245, 235, 225, 50 };
+
+    try expect(eql(u8, &expected_data, &data2));
+}
+
+pub fn to_grayscale(current_img: ImageData, next_img: ImageData) void {
     var idx: u32 = 0;
     while (idx < current_img.data.len) : (idx += 4) {
         const r: u16 = @intCast(current_img.data[idx]);
@@ -26,7 +48,6 @@ pub fn to_grayscale(current_img: ImageData, next_img: ImageData, swap_states: *c
         next_img.data[idx + 2] = avg8;
         next_img.data[idx + 3] = current_img.data[idx + 3];
     }
-    swap_states();
 }
 
 fn avg_pixels(current_img: ImageData, pixelCoords: []Coord, kernel: []f32) RgbPixel {
@@ -55,9 +76,9 @@ fn avg_pixels(current_img: ImageData, pixelCoords: []Coord, kernel: []f32) RgbPi
     return RgbPixel{ .r = r, .g = g, .b = b, .a = avgA };
 }
 
-pub fn convolution(current_img: ImageData, next_img: ImageData, kernel: []f32, swap_states: *const fn () void) void {
-    const maxX = current_state.n_cols - 1;
-    const maxY = current_state.n_rows - 1;
+pub fn convolution(current_img: ImageData, next_img: ImageData, kernel: []f32) void {
+    const maxX = current_img.n_cols - 1;
+    const maxY = current_img.n_rows - 1;
 
     // corners
     // top-left
@@ -104,30 +125,18 @@ pub fn convolution(current_img: ImageData, next_img: ImageData, kernel: []f32, s
             next_img.set_pixel(Coord{ .x = c_idx, .y = r_idx }, avg_pixels(current_img, @constCast(&coords), kernel));
         }
     }
-
-    swap_states();
 }
 
-pub const kernels: [_][9]f32 {
-  [_]f32{ 0.1, 0.1, 0.1, 0.1, 0.2, 0.1, 0.1, 0.1, 0.1 }, // blur
-  [_]f32{ 0.0, -1.0, 0.0, -1.0, 5.0, -1.0, 0.0, -1.0, 0.0 }, // sharpen
-  [_]f32{ -1.0, -1.0, -1.0, -1.0, 8.0, -1.0, -1.0, -1.0, -1.0 }, // edge_detection
-  [_]f32{ -2.0, -1.0, 0.0, -1.0, 1.0, 1.0, 0.0, 1.0, 2.0 }, // emboss
-  [_]f32{ 0.33, 0.0, 0.0, 0.34, 0.0, 0.0, 0.33, 0.0, 0.0 }, // motion blur
-  [_]f32{ -1.0, 0.0, 1.0, -1.0, 0.0, 1.0, -1.0, 0.0, 1.0 }, // edge_detection_perwitt_horizontal
-  [_]f32{ -1.0, -1.0, -1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0 }, // edge_detection_perwitt_vertical
-  [_]f32{ -1.0, 0.0, 1.0, -2.0, 0.0, 2.0, -1.0, 0.0, 1.0 }, // edge_detection_sobel_horizontal
-  [_]f32{ -1.0, -2.0, -1.0, 0.0, 0.0, 0.0, 1.0, 2.0, 1.0 } // edge_detection_sobel_vertical
-}
-
-pub const ConvolutionKernels = enum {
-  blur,
-  sharpen,
-  edge_detection,
-  emboss,
-  motion_blur,
-  edge_detection_perwitt_horizontal,
-  edge_detection_perwitt_vertical,
-  edge_detection_sobel_horizontal,
-  edge_detection_sobel_vertical
+pub const kernels: [9][9]f32 = .{
+    .{ 0.1, 0.1, 0.1, 0.1, 0.2, 0.1, 0.1, 0.1, 0.1 }, // blur
+    .{ 0.0, -1.0, 0.0, -1.0, 5.0, -1.0, 0.0, -1.0, 0.0 }, // sharpen
+    .{ -1.0, -1.0, -1.0, -1.0, 8.0, -1.0, -1.0, -1.0, -1.0 }, // edge_detection
+    .{ -2.0, -1.0, 0.0, -1.0, 1.0, 1.0, 0.0, 1.0, 2.0 }, // emboss
+    .{ 0.33, 0.0, 0.0, 0.34, 0.0, 0.0, 0.33, 0.0, 0.0 }, // motion blur
+    .{ -1.0, 0.0, 1.0, -1.0, 0.0, 1.0, -1.0, 0.0, 1.0 }, // edge_detection_perwitt_horizontal
+    .{ -1.0, -1.0, -1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0 }, // edge_detection_perwitt_vertical
+    .{ -1.0, 0.0, 1.0, -2.0, 0.0, 2.0, -1.0, 0.0, 1.0 }, // edge_detection_sobel_horizontal
+    .{ -1.0, -2.0, -1.0, 0.0, 0.0, 0.0, 1.0, 2.0, 1.0 }, // edge_detection_sobel_vertical
 };
+
+pub const ConvolutionKernels = enum { blur, sharpen, edge_detection, emboss, motion_blur, edge_detection_perwitt_horizontal, edge_detection_perwitt_vertical, edge_detection_sobel_horizontal, edge_detection_sobel_vertical };
