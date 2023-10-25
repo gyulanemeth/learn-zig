@@ -50,6 +50,20 @@ pub fn to_grayscale(current_img: ImageData, next_img: ImageData) void {
     }
 }
 
+test "to_grayscale" {
+    var data1: [16]u8 = .{ 10, 10, 10, 255, 20, 20, 20, 250, 30, 20, 10, 100, 10, 20, 30, 50 };
+    var data2: [16]u8 = .{0} ** 16;
+
+    var img1 = ImageData{ .width = 2, .height = 2, .data = data1[0..data1.len] };
+    var img2 = ImageData{ .width = 2, .height = 2, .data = data2[0..data2.len] };
+
+    to_grayscale(img1, img2);
+
+    var expected_data: [16]u8 = .{ 10, 10, 10, 255, 20, 20, 20, 250, 20, 20, 20, 100, 20, 20, 20, 50 };
+
+    try expect(eql(u8, &expected_data, &data2));
+}
+
 fn avg_pixels(current_img: ImageData, pixelCoords: []Coord, kernel: []f32) RgbPixel {
     var avgR: f32 = 0;
     var avgG: f32 = 0;
