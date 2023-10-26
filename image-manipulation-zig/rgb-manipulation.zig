@@ -9,7 +9,7 @@ const Coord = img_data.Coord;
 const convert = @import("./convert.zig");
 const RgbPixel = convert.RgbPixel;
 
-pub fn invert(current_img: ImageData, next_img: ImageData) void {
+pub fn invert(current_img: *ImageData, next_img: *ImageData) void {
     var idx: u32 = 0;
     while (idx < current_img.data.len) : (idx += 4) {
         next_img.data[idx] = 255 - current_img.data[idx];
@@ -26,14 +26,14 @@ test "invert" {
     var img1 = ImageData{ .width = 2, .height = 2, .data = data1[0..data1.len] };
     var img2 = ImageData{ .width = 2, .height = 2, .data = data2[0..data2.len] };
 
-    invert(img1, img2);
+    invert(&img1, &img2);
 
     var expected_data: [16]u8 = .{ 245, 245, 245, 255, 235, 235, 235, 250, 225, 235, 245, 100, 245, 235, 225, 50 };
 
     try expect(eql(u8, &expected_data, &data2));
 }
 
-pub fn to_grayscale(current_img: ImageData, next_img: ImageData) void {
+pub fn to_grayscale(current_img: *ImageData, next_img: *ImageData) void {
     var idx: u32 = 0;
     while (idx < current_img.data.len) : (idx += 4) {
         const r: u16 = @intCast(current_img.data[idx]);
@@ -57,14 +57,14 @@ test "to_grayscale" {
     var img1 = ImageData{ .width = 2, .height = 2, .data = data1[0..data1.len] };
     var img2 = ImageData{ .width = 2, .height = 2, .data = data2[0..data2.len] };
 
-    to_grayscale(img1, img2);
+    to_grayscale(&img1, &img2);
 
     var expected_data: [16]u8 = .{ 10, 10, 10, 255, 20, 20, 20, 250, 20, 20, 20, 100, 20, 20, 20, 50 };
 
     try expect(eql(u8, &expected_data, &data2));
 }
 
-fn avg_pixels(current_img: ImageData, pixelCoords: []Coord, kernel: []f32) RgbPixel {
+fn avg_pixels(current_img: *ImageData, pixelCoords: []Coord, kernel: []f32) RgbPixel {
     var avgR: f32 = 0;
     var avgG: f32 = 0;
     var avgB: f32 = 0;
@@ -90,9 +90,9 @@ fn avg_pixels(current_img: ImageData, pixelCoords: []Coord, kernel: []f32) RgbPi
     return RgbPixel{ .r = r, .g = g, .b = b, .a = avgA };
 }
 
-pub fn convolution(current_img: ImageData, next_img: ImageData, kernel: []f32) void {
-    const maxX = current_img.n_cols - 1;
-    const maxY = current_img.n_rows - 1;
+pub fn convolution(current_img: *ImageData, next_img: *ImageData, kernel: []f32) void {
+    const maxX = current_img.width - 1;
+    const maxY = current_img.height - 1;
 
     // corners
     // top-left
@@ -116,7 +116,8 @@ pub fn convolution(current_img: ImageData, next_img: ImageData, kernel: []f32) v
     // top & bottom
     var topKernel = [_]f32{ kernel[3], kernel[4], kernel[5], kernel[6], kernel[7], kernel[8] };
     var bottomKernel = [_]f32{ kernel[0], kernel[1], kernel[2], kernel[3], kernel[4], kernel[5] };
-    for (1..maxX) |c_idx| {
+    for (1..maxX) |idx| {
+        const c_idx: u32 = @intCast(idx);
         var edge_coords = [6]Coord{ .{ .x = c_idx - 1, .y = 0 }, .{ .x = c_idx, .y = 0 }, .{ .x = c_idx + 1, .y = 0 }, .{ .x = c_idx - 1, .y = 1 }, .{ .x = c_idx, .y = 1 }, .{ .x = c_idx + 1, .y = 1 } };
         next_img.set_pixel(Coord{ .x = c_idx, .y = 0 }, avg_pixels(current_img, @constCast(&edge_coords), @constCast(&topKernel)));
         edge_coords = [6]Coord{ .{ .x = c_idx - 1, .y = maxY - 1 }, .{ .x = c_idx, .y = maxY - 1 }, .{ .x = c_idx + 1, .y = maxY - 1 }, .{ .x = c_idx - 1, .y = maxY }, .{ .x = c_idx, .y = maxY }, .{ .x = c_idx + 1, .y = maxY } };
@@ -125,7 +126,8 @@ pub fn convolution(current_img: ImageData, next_img: ImageData, kernel: []f32) v
     // left & right
     var leftKernel = [_]f32{ kernel[3], kernel[4], kernel[5], kernel[6], kernel[7], kernel[8] };
     var rightKernel = [_]f32{ kernel[0], kernel[1], kernel[2], kernel[3], kernel[4], kernel[5] };
-    for (1..maxY) |r_idx| {
+    for (1..maxY) |idx| {
+        const r_idx: u32 = @intCast(idx);
         var edge_coords = [6]Coord{ .{ .x = 0, .y = r_idx - 1 }, .{ .x = 0, .y = r_idx }, .{ .x = 0, .y = r_idx + 1 }, .{ .x = 1, .y = r_idx - 1 }, .{ .x = 1, .y = r_idx }, .{ .x = 1, .y = r_idx + 1 } };
         next_img.set_pixel(Coord{ .x = 0, .y = r_idx }, avg_pixels(current_img, @constCast(&edge_coords), @constCast(&leftKernel)));
         edge_coords = [6]Coord{ .{ .x = maxX - 1, .y = r_idx - 1 }, .{ .x = maxX - 1, .y = r_idx }, .{ .x = maxX - 1, .y = r_idx + 1 }, .{ .x = maxX, .y = r_idx - 1 }, .{ .x = maxX, .y = r_idx }, .{ .x = maxX, .y = r_idx + 1 } };
@@ -133,12 +135,131 @@ pub fn convolution(current_img: ImageData, next_img: ImageData, kernel: []f32) v
     }
 
     // middle part
-    for (1..maxY) |r_idx| {
-        for (1..maxX) |c_idx| {
+    for (1..maxY) |r_idx_u| {
+        const r_idx: u32 = @intCast(r_idx_u);
+        for (1..maxX) |c_idx_u| {
+            const c_idx: u32 = @intCast(c_idx_u);
             const coords = [9]Coord{ .{ .y = r_idx - 1, .x = c_idx - 1 }, .{ .y = r_idx - 1, .x = c_idx }, .{ .y = r_idx - 1, .x = c_idx + 1 }, .{ .y = r_idx, .x = c_idx - 1 }, .{ .y = r_idx, .x = c_idx }, .{ .y = r_idx, .x = c_idx + 1 }, .{ .y = r_idx + 1, .x = c_idx - 1 }, .{ .y = r_idx + 1, .x = c_idx }, .{ .y = r_idx + 1, .x = c_idx + 1 } };
             next_img.set_pixel(Coord{ .x = c_idx, .y = r_idx }, avg_pixels(current_img, @constCast(&coords), kernel));
         }
     }
+}
+
+test "convolution" {
+    var data1: [100]u8 = .{ 1, 0, 0, 255, 1, 1, 0, 254, 0, 0, 1, 253, 1, 1, 0, 252, 1, 0, 1, 251 } ** 5;
+    var data2: [100]u8 = .{0} ** 100;
+
+    var kernel: [9]f32 = .{ -1.0, 0.0, -1.0, 0.0, 4.0, 0.0, -1.0, 0.0, -1.0 };
+
+    var img1 = ImageData{ .width = 5, .height = 5, .data = data1[0..data1.len] };
+    var img2 = ImageData{ .width = 5, .height = 5, .data = data2[0..data2.len] };
+
+    convolution(&img1, &img2, kernel[0..kernel.len]);
+
+    var expected_data: [100]u8 = .{
+        3,
+        0,
+        0,
+        255,
+        3,
+        4,
+        0,
+        255,
+        0,
+        0,
+        4,
+        255,
+        3,
+        4,
+        0,
+        255,
+        3,
+        0,
+        4,
+        255,
+        2,
+        0,
+        0,
+        255,
+        2,
+        4,
+        0,
+        255,
+        0,
+        0,
+        4,
+        255,
+        2,
+        4,
+        0,
+        255,
+        2,
+        0,
+        4,
+        255,
+        2,
+        0,
+        0,
+        255,
+        2,
+        4,
+        0,
+        255,
+        0,
+        0,
+        4,
+        255,
+        2,
+        4,
+        0,
+        255,
+        2,
+        0,
+        4,
+        255,
+        2,
+        0,
+        0,
+        255,
+        2,
+        4,
+        0,
+        255,
+        0,
+        0,
+        4,
+        255,
+        2,
+        4,
+        0,
+        255,
+        2,
+        0,
+        4,
+        255,
+        3,
+        0,
+        0,
+        255,
+        3,
+        4,
+        0,
+        255,
+        0,
+        0,
+        4,
+        255,
+        3,
+        4,
+        0,
+        255,
+        3,
+        0,
+        4,
+        255,
+    };
+
+    try expect(eql(u8, &expected_data, &data2));
 }
 
 pub const kernels: [9][9]f32 = .{
