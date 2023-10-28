@@ -16,10 +16,6 @@ var state_2: ImageData = undefined;
 var current_state: ImageData = undefined;
 var next_state: ImageData = undefined;
 
-const SelectionData = struct { width: u32, height: u32, selection: []u8 };
-
-const selection: SelectionData = undefined;
-
 export fn init(height: u32, width: u32) callconv(.C) [*]u8 {
     const num_color_values = height * width * 4; // 4x -> r, g, b, a;
     const memory_size = num_color_values * 2; // 2x -> current_state, next_state
@@ -41,6 +37,10 @@ export fn init(height: u32, width: u32) callconv(.C) [*]u8 {
 
 export fn currentImgAddress() callconv(.C) [*]u8 {
     return current_state.data.ptr;
+}
+
+export fn selectionAddress() callconv(.C) [*]u8 {
+    return selection.selection.ptr;
 }
 
 export fn destroy() void {
