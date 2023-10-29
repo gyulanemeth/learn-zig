@@ -21,8 +21,6 @@ export fn init(height: u32, width: u32) callconv(.C) [*]u8 {
     const memory_size = num_color_values * 2; // 2x -> current_state, next_state
     var memory = std.heap.wasm_allocator.alloc(u8, memory_size) catch unreachable;
 
-    var selection = std.heap.wasm_allocator.alloc(u8, height * width);
-
     full_state = ImageData{ .height = height, .width = width, .data = memory };
     state_1 = ImageData{ .height = full_state.height, .width = full_state.width, .data = full_state.data[0..num_color_values] };
     state_2 = ImageData{ .height = full_state.height, .width = full_state.width, .data = full_state.data[num_color_values..] };
