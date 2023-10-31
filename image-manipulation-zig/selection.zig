@@ -135,4 +135,54 @@ pub fn setSelectionBasedOnHslRange(img: ImageData, coord: Coord, range: HslPixel
     }
 }
 
-pub fn dilate() void {}
+fn sum_coords(coords: [_]Coord) u8 {
+  var sum: u8 = 0;
+
+  for(coords) |coord| {
+    sum += selection[coord.y * selection.width + coord.y];
+  }
+
+  return sum;
+}
+
+pub fn dilate() void {
+  var new_selection_data = std.heap.wasm_allocator.alloc(u8, selection.width * selection.height);
+  defer std.heap.wasm_allocator.free(new_selection_data);
+
+  const max_x = selection.width - 1;
+  const max_y = selection.height - 1;
+
+  // top-left corner
+  const tlSum = sum_coords(.{
+    Coord{ .x = 0, .y = 1 },
+    Coord{ .x = 1, .y = 0 },
+    Coord{ .x = 1, .y = 1 }
+  });
+  new_selection_data[0] = if (tlSum > 1) 1 else 0;
+
+  // top-right corner
+  const trSum = sum_coords(.{
+    Coord{ .x = max_x, .y = 1 },
+    Coord{ .x = max_x - 1, .y = 0 },
+    Coord{ .x = max_x - 1, .y = 1 }
+  });
+  new_selection_data[maxX] = if (trSum > 1) 1 else 0;
+
+  // bottom-left corner
+  const blSum = sum_coords(.{
+    Coord{ .x = 0, .y = maxY - 1 },
+    Coord{ .x = 1, .y = maxY },
+    Coord{ .x = 1, .y = maxY - 1 }
+  });
+  new_selection_data[maxY] if (blSum > 1) 1 else 0;
+
+  // bottom-right corner
+  const brSum = sum_coords(.{
+    Coord{ .x = maxX, .y = maxY - 1 },
+    Coord{ .x = maxX - 1, .y = maxY },
+    Coord{ .x = maxX - 1, .y = maxY - 1 }
+  });
+  new_selection_data[maxY * selection.width + maxX] = if (brSum > 1) 1 else 0;
+
+  @memcpy(selection.data, new_selection_data);
+}

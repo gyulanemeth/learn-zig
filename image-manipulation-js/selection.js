@@ -268,9 +268,9 @@ export default (imgData, drawSelectedPixels = () => {}) => {
       ])
 
       if (tlSum > 1) {
-        selection[0] = 1
+        newSelection[0] = 1
       } else {
-        selection[0] = 0
+        newSelection[0] = 0
       }
 
       // top-right corner: (maxX, 0)
@@ -281,37 +281,35 @@ export default (imgData, drawSelectedPixels = () => {}) => {
       ])
 
       if (trSum > 1) {
-        selection[0] = 1
+        newSelection[maxX] = 1
       } else {
-        selection[0] = 0
+        newSelection[maxX] = 0
       }
 
       // bottom-left corner: (0, maxY)
       const blSum = sumCoords([
-        { x: 0, y: maxY },
         { x: 0, y: maxY - 1 },
         { x: 1, y: maxY },
         { x: 1, y: maxY - 1 }
       ])
 
       if (blSum > 1) {
-        selection[0] = 1
+        newSelection[maxY] = 1
       } else {
-        selection[0] = 0
+        newSelection[maxY] = 0
       }
 
       // bottom-right corner: (maxX, maxY)
       const brSum = sumCoords([
-        { x: maxX, y: maxY },
         { x: maxX, y: maxY - 1 },
         { x: maxX - 1, y: maxY },
         { x: maxX - 1, y: maxY - 1 }
       ])
 
       if (brSum > 1) {
-        selection[0] = 1
+        newSelection[maxY * imgData.width + maxX] = 1
       } else {
-        selection[0] = 0
+        newSelection[maxY * imgData.width + maxX] = 0
       }
 
       // top & bottom edges
@@ -371,7 +369,7 @@ export default (imgData, drawSelectedPixels = () => {}) => {
           { x: maxX, y: rIdx + 1 }
         ])
 
-        if (leftSum > 3) {
+        if (rightSum > 3) {
           newSelection[rIdx * imgData.width + maxX] = 1
         } else {
           newSelection[rIdx * imgData.width + maxX] = 0
