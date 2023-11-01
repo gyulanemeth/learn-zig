@@ -166,23 +166,86 @@ pub fn dilate() void {
     Coord{ .x = max_x - 1, .y = 0 },
     Coord{ .x = max_x - 1, .y = 1 }
   });
-  new_selection_data[maxX] = if (trSum > 1) 1 else 0;
+  new_selection_data[max_x] = if (trSum > 1) 1 else 0;
 
   // bottom-left corner
   const blSum = sum_coords(.{
-    Coord{ .x = 0, .y = maxY - 1 },
-    Coord{ .x = 1, .y = maxY },
-    Coord{ .x = 1, .y = maxY - 1 }
+    Coord{ .x = 0, .y = max_y - 1 },
+    Coord{ .x = 1, .y = max_y },
+    Coord{ .x = 1, .y = max_y - 1 }
   });
-  new_selection_data[maxY] if (blSum > 1) 1 else 0;
+  new_selection_data[max_y] = if (blSum > 1) 1 else 0;
 
   // bottom-right corner
   const brSum = sum_coords(.{
-    Coord{ .x = maxX, .y = maxY - 1 },
-    Coord{ .x = maxX - 1, .y = maxY },
-    Coord{ .x = maxX - 1, .y = maxY - 1 }
+    Coord{ .x = max_x, .y = max_y - 1 },
+    Coord{ .x = max_x - 1, .y = max_y },
+    Coord{ .x = max_x - 1, .y = max_y - 1 }
   });
-  new_selection_data[maxY * selection.width + maxX] = if (brSum > 1) 1 else 0;
+  new_selection_data[max_y * selection.width + max_x] = if (brSum > 1) 1 else 0;
+
+  // top & bottom edges
+  var c_idx = 0;
+  while (c_idx < max_x) : (c_idx += 1) {
+    const top_sum = sum_coords(.{
+      Coord{ .x = c_idx - 1, .y = 0 },
+      Coord{ .x = c_idx + 1, .y = 0 },
+      Coord{ .x = c_idx - 1, .y = 1 },
+      Coord{ .x = c_idx, .y = 1 },
+      Coord{ .x = c_idx + 1, .y = 1 }
+    });
+    new_selection_data[c_idx] = if (top_sum > 2) 1 else 0;
+
+    const bottom_sum = sum_coords(.{
+      Coord{ .x = c_idx - 1, .y = max_y - 1 },
+      Coord{ .x = c_idx, .y = max_y - 1 },
+      Coord{ .x = c_idx + 1, .y = max_y - 1 },
+      Coord{ .x = c_idx - 1, .y = max_y },
+      Coord{ .x = c_idx + 1, .y = max_y }
+    });
+    new_selection_data[max_y * selection.width + c_idx] = if (bottom_sum > 2) 1 else 0;
+  }
+
+  // left & right edges
+  var r_idx = 0;
+  while (r_idx < max_y) : (r_idx += 1) {
+    const left_sum = sum_coords(.{
+      Coord{ .x = 0, .y = r_idx - 1 },
+      Coord{ .x = 0, .y = r_idx + 1 },
+      Coord{ .x = 1, .y = r_idx - 1 },
+      Coord{ .x = 1, .y = r_idx },
+      Coord{ .x = 1, .y = r_idx + 1 }
+    })
+    new_selection_data[r_idx * selection.width] = if (left_sum > 2) 1 else 0;
+
+    const right_sum = sum_coords([
+      Coord{ .x = maxX - 1, .y = r_idx - 1 },
+      Coord{ .x = maxX - 1, .y = r_idx },
+      Coord{ .x = maxX - 1, .y = r_idx + 1 },
+      Coord{ .x = maxX, .y = r_idx - 1 },
+      Coord{ .x = maxX, .y = r_idx + 1 }
+    ])
+    new_selection_data[r_idx * selection.width + max_x] = if (left_sum > 2) 1 else 0;
+  }
+
+  // middle
+  r_idx = 0;
+  while(r_idx < max_y) : (r_idx += 1) {
+    c_idx = 0;
+    while(c_idx < max_x) : (c_idx += 1) {
+      const sum = sum_coords(.{
+        Coord{ .y = r_idx - 1, .x = c_idx - 1 },
+        Coord{ .y = r_idx - 1, .x = c_idx },
+        Coord{ .y = r_idx - 1, .x = c_idx + 1 },
+        Coord{ .y = r_idx, .x = c_idx - 1 },
+        Coord{ .y = r_idx, .x = c_idx + 1 },
+        Coord{ .y = r_idx + 1, .x = c_idx - 1 },
+        Coord{ .y = r_idx + 1, .x = c_idx },
+        Coord{ .y = r_idx + 1, .x = c_idx + 1 }
+      })
+      new_selection_data[r_idx * selection.width + c_idx] = if (sum > 3) 1 else 0;
+    }
+  }
 
   @memcpy(selection.data, new_selection_data);
 }
