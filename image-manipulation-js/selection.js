@@ -347,7 +347,6 @@ export default (imgData, drawSelectedPixels = () => {}) => {
       for (let rIdx = 0; rIdx < maxY; rIdx += 1) {
         const leftSum = sumCoords([
           { x: 0, y: rIdx - 1 },
-          { x: 0, y: rIdx },
           { x: 0, y: rIdx + 1 },
           { x: 1, y: rIdx - 1 },
           { x: 1, y: rIdx },
@@ -365,7 +364,6 @@ export default (imgData, drawSelectedPixels = () => {}) => {
           { x: maxX - 1, y: rIdx },
           { x: maxX - 1, y: rIdx + 1 },
           { x: maxX, y: rIdx - 1 },
-          { x: maxX, y: rIdx },
           { x: maxX, y: rIdx + 1 }
         ])
 

@@ -135,6 +135,84 @@ pub fn setSelectionBasedOnHslRange(img: ImageData, coord: Coord, range: HslPixel
     }
 }
 
+pub fn setSelectionBasedOnNeighbouringHslRange(img: ImageData, coord: Coord, range: HslPixel, value: u8) void {
+    const rgb_start_px = img.get_pixel(coord);
+    const hsl_start_px = rgb_to_hsl(rgb_start_px);
+
+    const visited = std.heap.wasm_allocator.alloc(u8, img.width * img.height);
+    defer std.heap.wasm_allocator.free(visited);
+
+    const coors_to_visit = ArrayList(Coord).init(std.heap.wasm_allocator);
+    defer coors_to_visit.deinit();
+
+    coors_to_visit.append(coord);
+
+    while (coors_to_visit.items.len > 0) {
+        const act_coord = coors_to_visit.pop();
+
+        if (act_coord.x < 0 || act_coord.y < 0) {
+          continue;
+        }
+
+        if (act_coord.x >= img.width || act_coord.y >= img.height) {
+          continue;
+        }
+
+        if (visited[act_coord.y * img.width + act_coord.x] == 1) {
+          continue;
+        }
+
+        visited[act_coord.y * img.width + act_coord.x] = 1;
+
+        const act_rgb = img.get_pixel(act_coord);
+        const act_hsl = rgb_to_hsl(act_rgb);
+
+        const h_min = act_hsl.hue - range.hue;
+        const h_max = act_hsl.hue + range.hue;
+        const l_min = act_hsl.l - range.l;
+        const l_max = act_hsl.l + range.l;
+        const s_min = act_hsl.s - range.s;
+        const s_max = act_hsl.s + range.s;
+
+        if (act_hsl.h < h_min) {
+          continue;
+        }
+
+        if (act_hsl.h > h_max) {
+          continue;
+        }
+
+        if (act_hsl.l < l_min) {
+          continue;
+        }
+
+        if (act_hsl.l > l_max) {
+          continue;
+        }
+
+        if (act_hsl.s < s_min) {
+          continue;
+        }
+
+        if (act_hsl.s > s_max) {
+          continue;
+        }
+
+        selection[act_coord.y * img.width + act_coord.x] = 1;
+
+        coords_to_visit.append(Coord{ .y = act_coord.y - 1, .x = act_coord.x - 1 })
+        coords_to_visit.append(Coord{ .y = act_coord.y - 1, .x = act_coord.x })
+        coords_to_visit.append(Coord{ .y = act_coord.y - 1, .x = act_coord.x + 1 })
+
+        coords_to_visit.append(Coord{ .y = act_coord.y, .x = act_coord.x - 1 })
+        coords_to_visit.append(Coord{ .y = act_coord.y, .x = act_coord.x + 1 })
+
+        coords_to_visit.append(Coord{ .y = act_coord.y + 1, .x = act_coord.x - 1 })
+        coords_to_visit.append(Coord{ .y = act_coord.y + 1, .x = act_coord.x })
+        coords_to_visit.append(Coord{ .y = act_coord.y + 1, .x = act_coord.x + 1 })
+    }
+}
+
 fn sum_coords(coords: [_]Coord) u8 {
   var sum: u8 = 0;
 
