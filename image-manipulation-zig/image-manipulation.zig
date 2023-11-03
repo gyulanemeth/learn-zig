@@ -37,10 +37,6 @@ export fn currentImgAddress() callconv(.C) [*]u8 {
     return current_state.data.ptr;
 }
 
-export fn selectionAddress() callconv(.C) [*]u8 {
-    return selection.selection.ptr;
-}
-
 export fn destroy() void {
     std.heap.wasm_allocator.free(full_state.data);
 }

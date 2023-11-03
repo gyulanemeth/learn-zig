@@ -1,5 +1,11 @@
 const std = @import("std");
 const ArrayList = std.ArrayList;
+const expect = std.testing.expect;
+const eql = std.mem.eql;
+
+const img_data = @import("./ImageData.zig");
+const Coord = img_data.Coord;
+const ImageData = img_data.ImageData;
 
 const convert = @import("./convert.zig");
 
@@ -23,14 +29,22 @@ pub fn deinit() void {
     std.heap.wasm_allocator.free(selection.data);
 }
 
-pub fn selectAll() void {
-    for (selection.data, 0..) |value, idx| {
+pub fn select_all() void {
+    for (selection.data, 0..) |_, idx| {
         selection.data[idx] = 1;
     }
 }
 
-pub fn deselectAll() void {
-    for (selection.data, 0..) |value, idx| {
+test "select all" {
+  init(3, 3);
+  defer deinit();
+  select_all();
+  const expected_data = .{ 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+  try expect(eql(u8, &selection.data, &expected_data));
+}
+
+pub fn deselect_all() void {
+    for (selection.data, 0..) |_, idx| {
         selection.data[idx] = 0;
     }
 }
@@ -71,19 +85,19 @@ pub fn setSelectionBasedOnHslRange(img: ImageData, coord: Coord, range: HslPixel
     const visited = std.heap.wasm_allocator.alloc(u8, img.width * img.height);
     defer std.heap.wasm_allocator.free(visited);
 
-    const coors_to_visit = ArrayList(Coord).init(std.heap.wasm_allocator);
-    defer coors_to_visit.deinit();
+    const coords_to_visit = ArrayList(Coord).init(std.heap.wasm_allocator);
+    defer coords_to_visit.deinit();
 
-    coors_to_visit.append(coord);
+    coords_to_visit.append(coord);
 
-    while (coors_to_visit.items.len > 0) {
-        const act_coord = coors_to_visit.pop();
+    while (coords_to_visit.items.len > 0) {
+        const act_coord = coords_to_visit.pop();
 
-        if (act_coord.x < 0 || act_coord.y < 0) {
+        if (act_coord.x < 0 or act_coord.y < 0) {
           continue;
         }
 
-        if (act_coord.x >= img.width || act_coord.y >= img.height) {
+        if (act_coord.x >= img.width or act_coord.y >= img.height) {
           continue;
         }
 
@@ -91,7 +105,7 @@ pub fn setSelectionBasedOnHslRange(img: ImageData, coord: Coord, range: HslPixel
           continue;
         }
 
-        visited[act_coord.y * img.width + act_coord.x] = 1;
+        visited[act_coord.y * img.width + act_coord.x] = value;
 
         const act_rgb = img.get_pixel(act_coord);
         const act_hsl = rgb_to_hsl(act_rgb);
@@ -122,39 +136,36 @@ pub fn setSelectionBasedOnHslRange(img: ImageData, coord: Coord, range: HslPixel
 
         selection[act_coord.y * img.width + act_coord.x] = 1;
 
-        coords_to_visit.append(Coord{ .y = act_coord.y - 1, .x = act_coord.x - 1 })
-        coords_to_visit.append(Coord{ .y = act_coord.y - 1, .x = act_coord.x })
-        coords_to_visit.append(Coord{ .y = act_coord.y - 1, .x = act_coord.x + 1 })
+        coords_to_visit.append(Coord{ .y = act_coord.y - 1, .x = act_coord.x - 1 });
+        coords_to_visit.append(Coord{ .y = act_coord.y - 1, .x = act_coord.x });
+        coords_to_visit.append(Coord{ .y = act_coord.y - 1, .x = act_coord.x + 1 });
 
-        coords_to_visit.append(Coord{ .y = act_coord.y, .x = act_coord.x - 1 })
-        coords_to_visit.append(Coord{ .y = act_coord.y, .x = act_coord.x + 1 })
+        coords_to_visit.append(Coord{ .y = act_coord.y, .x = act_coord.x - 1 });
+        coords_to_visit.append(Coord{ .y = act_coord.y, .x = act_coord.x + 1 });
 
-        coords_to_visit.append(Coord{ .y = act_coord.y + 1, .x = act_coord.x - 1 })
-        coords_to_visit.append(Coord{ .y = act_coord.y + 1, .x = act_coord.x })
-        coords_to_visit.append(Coord{ .y = act_coord.y + 1, .x = act_coord.x + 1 })
+        coords_to_visit.append(Coord{ .y = act_coord.y + 1, .x = act_coord.x - 1 });
+        coords_to_visit.append(Coord{ .y = act_coord.y + 1, .x = act_coord.x });
+        coords_to_visit.append(Coord{ .y = act_coord.y + 1, .x = act_coord.x + 1 });
     }
 }
 
 pub fn setSelectionBasedOnNeighbouringHslRange(img: ImageData, coord: Coord, range: HslPixel, value: u8) void {
-    const rgb_start_px = img.get_pixel(coord);
-    const hsl_start_px = rgb_to_hsl(rgb_start_px);
-
     const visited = std.heap.wasm_allocator.alloc(u8, img.width * img.height);
     defer std.heap.wasm_allocator.free(visited);
 
-    const coors_to_visit = ArrayList(Coord).init(std.heap.wasm_allocator);
-    defer coors_to_visit.deinit();
+    const coords_to_visit = ArrayList(Coord).init(std.heap.wasm_allocator);
+    defer coords_to_visit.deinit();
 
-    coors_to_visit.append(coord);
+    coords_to_visit.append(coord);
 
-    while (coors_to_visit.items.len > 0) {
-        const act_coord = coors_to_visit.pop();
+    while (coords_to_visit.items.len > 0) {
+        const act_coord = coords_to_visit.pop();
 
-        if (act_coord.x < 0 || act_coord.y < 0) {
+        if (act_coord.x < 0 or act_coord.y < 0) {
           continue;
         }
 
-        if (act_coord.x >= img.width || act_coord.y >= img.height) {
+        if (act_coord.x >= img.width or act_coord.y >= img.height) {
           continue;
         }
 
@@ -162,7 +173,7 @@ pub fn setSelectionBasedOnNeighbouringHslRange(img: ImageData, coord: Coord, ran
           continue;
         }
 
-        visited[act_coord.y * img.width + act_coord.x] = 1;
+        visited[act_coord.y * img.width + act_coord.x] = value;
 
         const act_rgb = img.get_pixel(act_coord);
         const act_hsl = rgb_to_hsl(act_rgb);
@@ -200,20 +211,20 @@ pub fn setSelectionBasedOnNeighbouringHslRange(img: ImageData, coord: Coord, ran
 
         selection[act_coord.y * img.width + act_coord.x] = 1;
 
-        coords_to_visit.append(Coord{ .y = act_coord.y - 1, .x = act_coord.x - 1 })
-        coords_to_visit.append(Coord{ .y = act_coord.y - 1, .x = act_coord.x })
-        coords_to_visit.append(Coord{ .y = act_coord.y - 1, .x = act_coord.x + 1 })
+        coords_to_visit.append(Coord{ .y = act_coord.y - 1, .x = act_coord.x - 1 });
+        coords_to_visit.append(Coord{ .y = act_coord.y - 1, .x = act_coord.x });
+        coords_to_visit.append(Coord{ .y = act_coord.y - 1, .x = act_coord.x + 1 });
 
-        coords_to_visit.append(Coord{ .y = act_coord.y, .x = act_coord.x - 1 })
-        coords_to_visit.append(Coord{ .y = act_coord.y, .x = act_coord.x + 1 })
+        coords_to_visit.append(Coord{ .y = act_coord.y, .x = act_coord.x - 1 });
+        coords_to_visit.append(Coord{ .y = act_coord.y, .x = act_coord.x + 1 });
 
-        coords_to_visit.append(Coord{ .y = act_coord.y + 1, .x = act_coord.x - 1 })
-        coords_to_visit.append(Coord{ .y = act_coord.y + 1, .x = act_coord.x })
-        coords_to_visit.append(Coord{ .y = act_coord.y + 1, .x = act_coord.x + 1 })
+        coords_to_visit.append(Coord{ .y = act_coord.y + 1, .x = act_coord.x - 1 });
+        coords_to_visit.append(Coord{ .y = act_coord.y + 1, .x = act_coord.x });
+        coords_to_visit.append(Coord{ .y = act_coord.y + 1, .x = act_coord.x + 1 });
     }
 }
 
-fn sum_coords(coords: [_]Coord) u8 {
+fn sum_coords(coords: []Coord) u8 {
   var sum: u8 = 0;
 
   for(coords) |coord| {
@@ -293,17 +304,17 @@ pub fn dilate() void {
       Coord{ .x = 1, .y = r_idx - 1 },
       Coord{ .x = 1, .y = r_idx },
       Coord{ .x = 1, .y = r_idx + 1 }
-    })
+    });
     new_selection_data[r_idx * selection.width] = if (left_sum > 2) 1 else 0;
 
-    const right_sum = sum_coords([
-      Coord{ .x = maxX - 1, .y = r_idx - 1 },
-      Coord{ .x = maxX - 1, .y = r_idx },
-      Coord{ .x = maxX - 1, .y = r_idx + 1 },
-      Coord{ .x = maxX, .y = r_idx - 1 },
-      Coord{ .x = maxX, .y = r_idx + 1 }
-    ])
-    new_selection_data[r_idx * selection.width + max_x] = if (left_sum > 2) 1 else 0;
+    const right_sum = sum_coords(.{
+      Coord{ .x = max_x - 1, .y = r_idx - 1 },
+      Coord{ .x = max_x - 1, .y = r_idx },
+      Coord{ .x = max_x - 1, .y = r_idx + 1 },
+      Coord{ .x = max_x, .y = r_idx - 1 },
+      Coord{ .x = max_x, .y = r_idx + 1 }
+    });
+    new_selection_data[r_idx * selection.width + max_x] = if (right_sum > 2) 1 else 0;
   }
 
   // middle
@@ -320,7 +331,7 @@ pub fn dilate() void {
         Coord{ .y = r_idx + 1, .x = c_idx - 1 },
         Coord{ .y = r_idx + 1, .x = c_idx },
         Coord{ .y = r_idx + 1, .x = c_idx + 1 }
-      })
+      });
       new_selection_data[r_idx * selection.width + c_idx] = if (sum > 3) 1 else 0;
     }
   }
