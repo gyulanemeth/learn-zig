@@ -2,6 +2,7 @@ const std = @import("std");
 const ArrayList = std.ArrayList;
 const expect = std.testing.expect;
 const eql = std.mem.eql;
+const test_allocator = std.testing.allocator;
 
 const img_data = @import("./ImageData.zig");
 const Coord = img_data.Coord;
@@ -16,17 +17,17 @@ const hsl_to_rgb = convert.hsl_to_rgb;
 
 const SelectionData = struct { width: u32, height: u32, data: []u8 };
 
-pub const selection: SelectionData = undefined;
+pub var selection: SelectionData = undefined;
 
-pub fn init(width: u32, height: u32) void {
+pub fn init(allocator: std.mem.Allocator ,width: u32, height: u32) void {
     const length = height * width;
-    var data = std.heap.wasm_allocator.alloc(u8, length);
+    var data = allocator.alloc(u8, length) catch unreachable;
 
     selection = SelectionData{ .width = width, .height = height, .data = data };
 }
 
-pub fn deinit() void {
-    std.heap.wasm_allocator.free(selection.data);
+pub fn deinit(allocator: std.mem.Allocator) void {
+    allocator.free(selection.data);
 }
 
 pub fn select_all() void {
@@ -36,17 +37,31 @@ pub fn select_all() void {
 }
 
 test "select all" {
-  init(3, 3);
-  defer deinit();
+  init(test_allocator, 3, 3);
+  defer deinit(test_allocator);
   select_all();
-  const expected_data = .{ 1, 1, 1, 1, 1, 1, 1, 1, 1 };
-  try expect(eql(u8, &selection.data, &expected_data));
+  const expected_data: [9]u8 = .{ 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+  try expect(eql(u8, selection.data[0..selection.data.len], &expected_data));
 }
 
 pub fn deselect_all() void {
     for (selection.data, 0..) |_, idx| {
         selection.data[idx] = 0;
     }
+}
+
+test "deselect all" {
+  init(test_allocator, 3, 3);
+  defer deinit(test_allocator);
+
+  selection.data[2] = 1;
+  selection.data[3] = 1;
+  selection.data[5] = 1;
+  selection.data[7] = 1;
+
+  deselect_all();
+  const expected_data: [9]u8 = .{ 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+  try expect(eql(u8, selection.data[0..selection.data.len], &expected_data));
 }
 
 pub fn invert() void {
@@ -71,7 +86,7 @@ pub fn rectangularSelection(from: Coord, to: Coord) void {
     }
 }
 
-pub fn setSelectionBasedOnHslRange(img: ImageData, coord: Coord, range: HslPixel, value: u8) void {
+pub fn setSelectionBasedOnHslRange(allocator: std.mem.Allocator, img: ImageData, coord: Coord, range: HslPixel, value: u8) void {
     const rgb_start_px = img.get_pixel(coord);
     const hsl_start_px = rgb_to_hsl(rgb_start_px);
 
@@ -82,10 +97,10 @@ pub fn setSelectionBasedOnHslRange(img: ImageData, coord: Coord, range: HslPixel
     const s_min = hsl_start_px.s - range.s;
     const s_max = hsl_start_px.s + range.s;
 
-    const visited = std.heap.wasm_allocator.alloc(u8, img.width * img.height);
-    defer std.heap.wasm_allocator.free(visited);
+    const visited = allocator.alloc(u8, img.width * img.height) catch unreachable;
+    defer allocator.free(visited);
 
-    const coords_to_visit = ArrayList(Coord).init(std.heap.wasm_allocator);
+    const coords_to_visit = ArrayList(Coord).init(allocator);
     defer coords_to_visit.deinit();
 
     coords_to_visit.append(coord);
@@ -149,11 +164,11 @@ pub fn setSelectionBasedOnHslRange(img: ImageData, coord: Coord, range: HslPixel
     }
 }
 
-pub fn setSelectionBasedOnNeighbouringHslRange(img: ImageData, coord: Coord, range: HslPixel, value: u8) void {
-    const visited = std.heap.wasm_allocator.alloc(u8, img.width * img.height);
-    defer std.heap.wasm_allocator.free(visited);
+pub fn setSelectionBasedOnNeighbouringHslRange(allocator: std.mem.Allocator, img: ImageData, coord: Coord, range: HslPixel, value: u8) void {
+    const visited = allocator.alloc(u8, img.width * img.height);
+    defer allocator.free(visited);
 
-    const coords_to_visit = ArrayList(Coord).init(std.heap.wasm_allocator);
+    const coords_to_visit = ArrayList(Coord).init(allocator);
     defer coords_to_visit.deinit();
 
     coords_to_visit.append(coord);
@@ -234,9 +249,9 @@ fn sum_coords(coords: []Coord) u8 {
   return sum;
 }
 
-pub fn dilate() void {
-  var new_selection_data = std.heap.wasm_allocator.alloc(u8, selection.width * selection.height);
-  defer std.heap.wasm_allocator.free(new_selection_data);
+pub fn dilate(allocator: std.mem.Allocator) void {
+  var new_selection_data = allocator.alloc(u8, selection.width * selection.height);
+  defer allocator.free(new_selection_data);
 
   const max_x = selection.width - 1;
   const max_y = selection.height - 1;
