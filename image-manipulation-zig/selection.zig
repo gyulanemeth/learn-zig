@@ -22,6 +22,9 @@ pub var selection: SelectionData = undefined;
 pub fn init(allocator: std.mem.Allocator ,width: u32, height: u32) void {
     const length = height * width;
     var data = allocator.alloc(u8, length) catch unreachable;
+    for (data, 0..) |_, idx| {
+      data[idx] = 0;
+    }
 
     selection = SelectionData{ .width = width, .height = height, .data = data };
 }
@@ -70,20 +73,54 @@ pub fn invert() void {
     }
 }
 
-pub fn rectangularSelection(from: Coord, to: Coord) void {
-    const fromY = @min(from.y, to.y, 0);
-    const toY = @max(from.y, to.y, selection.height - 1);
+pub fn rectangular_selection(from: Coord, to: Coord) void {
+    const from_y = @max(@min(from.y, to.y), 0);
+    const to_y = @min(@max(from.y, to.y), selection.height - 1);
 
-    const fromX = @min(from.x, to.x, 0);
-    const toX = @max(from.x, to.x, selection.width - 1);
+    const from_x = @max(@min(from.x, to.x), 0);
+    const to_x = @min(@max(from.x, to.x), selection.width - 1);
 
-    var yIdx = fromY;
-    while (yIdx <= toY) : (yIdx += 1) {
-        var xIdx = fromX;
-        while (xIdx <= toX) : (xIdx += 1) {
-            selection.data[yIdx * selection.width + xIdx] = 1;
+    var y_idx: u32 = from_y;
+    while (y_idx <= to_y) : (y_idx += 1) {
+        var x_idx: u32 = from_x;
+        while (x_idx <= to_x) : (x_idx += 1) {
+            selection.data[y_idx * selection.width + x_idx] = 1;
         }
     }
+}
+
+test "rectangular_selection" {
+  init(test_allocator, 6, 5);
+  defer deinit(test_allocator);
+
+  const from1 = Coord{ .x = 1, .y = 2 };
+  const to1 = Coord{ .x = 3, .y = 3 };
+
+  rectangular_selection(from1, to1);
+
+  const expected_data1: [30]u8 = .{
+    0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0,
+    0, 1, 1, 1, 0, 0,
+    0, 1, 1, 1, 0, 0,
+    0, 0, 0, 0, 0, 0
+  };
+
+  try expect(eql(u8, selection.data[0..selection.data.len], &expected_data1));
+
+  const from2 = Coord{ .x = 0, .y = 0 };
+  const to2 = Coord{ .x = 1, .y = 1 };
+
+  rectangular_selection(from2, to2);
+
+  const expected_data2: [30]u8 = .{
+    1, 1, 0, 0, 0, 0,
+    1, 1, 0, 0, 0, 0,
+    0, 1, 1, 1, 0, 0,
+    0, 1, 1, 1, 0, 0,
+    0, 0, 0, 0, 0, 0
+  };
+  try expect(eql(u8, selection.data[0..selection.data.len], &expected_data2));
 }
 
 pub fn setSelectionBasedOnHslRange(allocator: std.mem.Allocator, img: ImageData, coord: Coord, range: HslPixel, value: u8) void {
