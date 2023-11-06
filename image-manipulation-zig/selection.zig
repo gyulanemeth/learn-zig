@@ -73,6 +73,20 @@ pub fn invert() void {
     }
 }
 
+test "invert" {
+  init(test_allocator, 3, 3);
+  defer deinit(test_allocator);
+
+  selection.data[2] = 1;
+  selection.data[3] = 1;
+  selection.data[5] = 1;
+  selection.data[7] = 1;
+
+  invert();
+  const expected_data: [9]u8 = .{ 1, 1, 0, 0, 1, 0, 1, 0, 1 };
+  try expect(eql(u8, selection.data[0..selection.data.len], &expected_data));
+}
+
 pub fn rectangular_selection(from: Coord, to: Coord) void {
     const from_y = @max(@min(from.y, to.y), 0);
     const to_y = @min(@max(from.y, to.y), selection.height - 1);
@@ -287,7 +301,7 @@ fn sum_coords(coords: []Coord) u8 {
 }
 
 pub fn dilate(allocator: std.mem.Allocator) void {
-  var new_selection_data = allocator.alloc(u8, selection.width * selection.height);
+  var new_selection_data = allocator.alloc(u8, selection.width * selection.height) catch unreachable;
   defer allocator.free(new_selection_data);
 
   const max_x = selection.width - 1;
@@ -389,4 +403,20 @@ pub fn dilate(allocator: std.mem.Allocator) void {
   }
 
   @memcpy(selection.data, new_selection_data);
+}
+
+test "dilate - corners" {
+  init(test_allocator, 3, 3);
+  defer deinit(test_allocator);
+
+  selection.data[1] = 1;
+  dilate(test_allocator);
+
+  const expected_data: [9]u8 = .{
+    1, 1, 1,
+    0, 0, 0,
+    0, 0, 0
+  };
+
+  try expect(eql(u8, selection.data[0..selection.data.len], &expected_data));
 }
