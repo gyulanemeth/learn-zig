@@ -290,11 +290,11 @@ pub fn setSelectionBasedOnNeighbouringHslRange(allocator: std.mem.Allocator, img
     }
 }
 
-fn sum_coords(coords: []Coord) u8 {
+fn sum_coords(coords: []const Coord) u8 {
   var sum: u8 = 0;
 
   for(coords) |coord| {
-    sum += selection[coord.y * selection.width + coord.y];
+    sum += selection.data[coord.y * selection.width + coord.x];
   }
 
   return sum;
@@ -308,87 +308,119 @@ pub fn dilate(allocator: std.mem.Allocator) void {
   const max_y = selection.height - 1;
 
   // top-left corner
-  const tlSum = sum_coords(.{
-    Coord{ .x = 0, .y = 1 },
-    Coord{ .x = 1, .y = 0 },
-    Coord{ .x = 1, .y = 1 }
-  });
-  new_selection_data[0] = if (tlSum > 1) 1 else 0;
+  if (selection.data[0] == 1) {
+    new_selection_data[0] = 1;
+  } else {
+    const tlSum = sum_coords(&[3]Coord{
+      Coord{ .x = 0, .y = 1 },
+      Coord{ .x = 1, .y = 0 },
+      Coord{ .x = 1, .y = 1 }
+    });
+    new_selection_data[0] = if (tlSum > 1) 1 else 0;
+  }
 
   // top-right corner
-  const trSum = sum_coords(.{
-    Coord{ .x = max_x, .y = 1 },
-    Coord{ .x = max_x - 1, .y = 0 },
-    Coord{ .x = max_x - 1, .y = 1 }
-  });
-  new_selection_data[max_x] = if (trSum > 1) 1 else 0;
+  if (selection.data[max_x] == 1) {
+    new_selection_data[max_x] = 1;
+  } else {
+    const trSum = sum_coords(&[3]Coord{
+      Coord{ .x = max_x, .y = 1 },
+      Coord{ .x = max_x - 1, .y = 0 },
+      Coord{ .x = max_x - 1, .y = 1 }
+    });
+    new_selection_data[max_x] = if (trSum > 1) 1 else 0;
+  }
 
   // bottom-left corner
-  const blSum = sum_coords(.{
-    Coord{ .x = 0, .y = max_y - 1 },
-    Coord{ .x = 1, .y = max_y },
-    Coord{ .x = 1, .y = max_y - 1 }
-  });
-  new_selection_data[max_y] = if (blSum > 1) 1 else 0;
+  if (selection.data[max_y * selection.width] == 1) {
+    new_selection_data[max_y * selection.width] = 1;
+  } else {
+    const blSum = sum_coords(&[3]Coord{
+      Coord{ .x = 0, .y = max_y - 1 },
+      Coord{ .x = 1, .y = max_y },
+      Coord{ .x = 1, .y = max_y - 1 }
+    });
+    new_selection_data[max_y * selection.width] = if (blSum > 1) 1 else 0;
+  }
 
   // bottom-right corner
-  const brSum = sum_coords(.{
-    Coord{ .x = max_x, .y = max_y - 1 },
-    Coord{ .x = max_x - 1, .y = max_y },
-    Coord{ .x = max_x - 1, .y = max_y - 1 }
-  });
-  new_selection_data[max_y * selection.width + max_x] = if (brSum > 1) 1 else 0;
+  if (selection.data[max_y * selection.width + max_x] == 1) {
+    new_selection_data[max_y * selection.width + max_x] = 1;
+  } else {
+    const brSum = sum_coords(&[3]Coord{
+      Coord{ .x = max_x, .y = max_y - 1 },
+      Coord{ .x = max_x - 1, .y = max_y },
+      Coord{ .x = max_x - 1, .y = max_y - 1 }
+    });
+    new_selection_data[max_y * selection.width + max_x] = if (brSum > 1) 1 else 0;
+  } 
 
   // top & bottom edges
-  var c_idx = 0;
+  var c_idx: u32 = 1;
   while (c_idx < max_x) : (c_idx += 1) {
-    const top_sum = sum_coords(.{
-      Coord{ .x = c_idx - 1, .y = 0 },
-      Coord{ .x = c_idx + 1, .y = 0 },
-      Coord{ .x = c_idx - 1, .y = 1 },
-      Coord{ .x = c_idx, .y = 1 },
-      Coord{ .x = c_idx + 1, .y = 1 }
-    });
-    new_selection_data[c_idx] = if (top_sum > 2) 1 else 0;
+    if (selection.data[c_idx] == 1) {
+      new_selection_data[c_idx] = 1;
+    } else {
+      const top_sum = sum_coords(&[5]Coord{
+        Coord{ .x = c_idx - 1, .y = 0 },
+        Coord{ .x = c_idx + 1, .y = 0 },
+        Coord{ .x = c_idx - 1, .y = 1 },
+        Coord{ .x = c_idx, .y = 1 },
+        Coord{ .x = c_idx + 1, .y = 1 }
+      });
+      new_selection_data[c_idx] = if (top_sum > 2) 1 else 0;
+    }
 
-    const bottom_sum = sum_coords(.{
-      Coord{ .x = c_idx - 1, .y = max_y - 1 },
-      Coord{ .x = c_idx, .y = max_y - 1 },
-      Coord{ .x = c_idx + 1, .y = max_y - 1 },
-      Coord{ .x = c_idx - 1, .y = max_y },
-      Coord{ .x = c_idx + 1, .y = max_y }
-    });
-    new_selection_data[max_y * selection.width + c_idx] = if (bottom_sum > 2) 1 else 0;
+    if (selection.data[max_y * selection.width + c_idx] == 1) {
+      new_selection_data[max_y * selection.width + c_idx] = 1;
+    } else {
+      const bottom_sum = sum_coords(&[5]Coord{
+        Coord{ .x = c_idx - 1, .y = max_y - 1 },
+        Coord{ .x = c_idx, .y = max_y - 1 },
+        Coord{ .x = c_idx + 1, .y = max_y - 1 },
+        Coord{ .x = c_idx - 1, .y = max_y },
+        Coord{ .x = c_idx + 1, .y = max_y }
+      });
+      new_selection_data[max_y * selection.width + c_idx] = if (bottom_sum > 2) 1 else 0;
+    }
   }
 
   // left & right edges
-  var r_idx = 0;
+  var r_idx: u32 = 1;
   while (r_idx < max_y) : (r_idx += 1) {
-    const left_sum = sum_coords(.{
-      Coord{ .x = 0, .y = r_idx - 1 },
-      Coord{ .x = 0, .y = r_idx + 1 },
-      Coord{ .x = 1, .y = r_idx - 1 },
-      Coord{ .x = 1, .y = r_idx },
-      Coord{ .x = 1, .y = r_idx + 1 }
-    });
-    new_selection_data[r_idx * selection.width] = if (left_sum > 2) 1 else 0;
+    if (selection.data[r_idx * selection.width] == 1) {
+      new_selection_data[r_idx * selection.width] = 1;
+    } else {
+      const left_sum = sum_coords(&[5]Coord{
+        Coord{ .x = 0, .y = r_idx - 1 },
+        Coord{ .x = 0, .y = r_idx + 1 },
+        Coord{ .x = 1, .y = r_idx - 1 },
+        Coord{ .x = 1, .y = r_idx },
+        Coord{ .x = 1, .y = r_idx + 1 }
+      });
+      new_selection_data[r_idx * selection.width] = if (left_sum > 2) 1 else 0;
+    }
 
-    const right_sum = sum_coords(.{
-      Coord{ .x = max_x - 1, .y = r_idx - 1 },
-      Coord{ .x = max_x - 1, .y = r_idx },
-      Coord{ .x = max_x - 1, .y = r_idx + 1 },
-      Coord{ .x = max_x, .y = r_idx - 1 },
-      Coord{ .x = max_x, .y = r_idx + 1 }
-    });
-    new_selection_data[r_idx * selection.width + max_x] = if (right_sum > 2) 1 else 0;
+    if (selection.data[r_idx * selection.width + max_x] == 1) {
+      new_selection_data[r_idx * selection.width + max_x] = 1;
+    } else {
+      const right_sum = sum_coords(&[5]Coord{
+        Coord{ .x = max_x - 1, .y = r_idx - 1 },
+        Coord{ .x = max_x - 1, .y = r_idx },
+        Coord{ .x = max_x - 1, .y = r_idx + 1 },
+        Coord{ .x = max_x, .y = r_idx - 1 },
+        Coord{ .x = max_x, .y = r_idx + 1 }
+      });
+      new_selection_data[r_idx * selection.width + max_x] = if (right_sum > 2) 1 else 0;
+    }
   }
 
   // middle
-  r_idx = 0;
+  r_idx = 1;
   while(r_idx < max_y) : (r_idx += 1) {
-    c_idx = 0;
+    c_idx = 1;
     while(c_idx < max_x) : (c_idx += 1) {
-      const sum = sum_coords(.{
+      const sum = sum_coords(&[8]Coord{
         Coord{ .y = r_idx - 1, .x = c_idx - 1 },
         Coord{ .y = r_idx - 1, .x = c_idx },
         Coord{ .y = r_idx - 1, .x = c_idx + 1 },
@@ -410,13 +442,17 @@ test "dilate - corners" {
   defer deinit(test_allocator);
 
   selection.data[1] = 1;
+  selection.data[3] = 1;
+
   dilate(test_allocator);
 
-  const expected_data: [9]u8 = .{
-    1, 1, 1,
-    0, 0, 0,
-    0, 0, 0
-  };
-
-  try expect(eql(u8, selection.data[0..selection.data.len], &expected_data));
+  try expect(selection.data[0] == 1);
+  try expect(selection.data[1] == 1);
+  try expect(selection.data[2] == 0);
+  try expect(selection.data[3] == 1);
+  try expect(selection.data[4] == 0);
+  try expect(selection.data[5] == 0);
+  try expect(selection.data[6] == 0);
+  try expect(selection.data[7] == 0);
+  try expect(selection.data[8] == 0);
 }
