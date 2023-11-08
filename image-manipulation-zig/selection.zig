@@ -341,7 +341,7 @@ pub fn dilate(allocator: std.mem.Allocator) void {
       Coord{ .x = 1, .y = max_y - 1 }
     });
     new_selection_data[max_y * selection.width] = if (blSum > 1) 1 else 0;
-  }
+  } 
 
   // bottom-right corner
   if (selection.data[max_y * selection.width + max_x] == 1) {
@@ -420,17 +420,22 @@ pub fn dilate(allocator: std.mem.Allocator) void {
   while(r_idx < max_y) : (r_idx += 1) {
     c_idx = 1;
     while(c_idx < max_x) : (c_idx += 1) {
-      const sum = sum_coords(&[8]Coord{
-        Coord{ .y = r_idx - 1, .x = c_idx - 1 },
-        Coord{ .y = r_idx - 1, .x = c_idx },
-        Coord{ .y = r_idx - 1, .x = c_idx + 1 },
-        Coord{ .y = r_idx, .x = c_idx - 1 },
-        Coord{ .y = r_idx, .x = c_idx + 1 },
-        Coord{ .y = r_idx + 1, .x = c_idx - 1 },
-        Coord{ .y = r_idx + 1, .x = c_idx },
-        Coord{ .y = r_idx + 1, .x = c_idx + 1 }
-      });
-      new_selection_data[r_idx * selection.width + c_idx] = if (sum > 3) 1 else 0;
+      // ide is if
+      if (selection.data[r_idx * selection.width + c_idx] == 1) {
+        new_selection_data[r_idx * selection.width + c_idx] = 1;
+      } else {
+        const sum = sum_coords(&[8]Coord{
+          Coord{ .y = r_idx - 1, .x = c_idx - 1 },
+          Coord{ .y = r_idx - 1, .x = c_idx },
+          Coord{ .y = r_idx - 1, .x = c_idx + 1 },
+          Coord{ .y = r_idx, .x = c_idx - 1 },
+          Coord{ .y = r_idx, .x = c_idx + 1 },
+          Coord{ .y = r_idx + 1, .x = c_idx - 1 },
+          Coord{ .y = r_idx + 1, .x = c_idx },
+          Coord{ .y = r_idx + 1, .x = c_idx + 1 }
+        });
+        new_selection_data[r_idx * selection.width + c_idx] = if (sum > 3) 1 else 0;
+      }
     }
   }
 
@@ -441,11 +446,17 @@ test "dilate - corners" {
   init(test_allocator, 3, 3);
   defer deinit(test_allocator);
 
+  // top left
+  // 0 1 0
+  // 1 0 0
+  // 0 0 0
   selection.data[1] = 1;
   selection.data[3] = 1;
-
   dilate(test_allocator);
 
+  // 1 1 0
+  // 1 0 0
+  // 0 0 0
   try expect(selection.data[0] == 1);
   try expect(selection.data[1] == 1);
   try expect(selection.data[2] == 0);
@@ -453,6 +464,168 @@ test "dilate - corners" {
   try expect(selection.data[4] == 0);
   try expect(selection.data[5] == 0);
   try expect(selection.data[6] == 0);
+  try expect(selection.data[7] == 0);
+  try expect(selection.data[8] == 0);
+
+  deselect_all();
+
+  // top-right
+  // 0 1 0
+  // 0 0 1
+  // 0 0 0
+  selection.data[1] = 1;
+  selection.data[5] = 1;
+  dilate(test_allocator);
+
+  // 0 1 1
+  // 0 0 1
+  // 0 0 0
+  try expect(selection.data[0] == 0);
+  try expect(selection.data[1] == 1);
+  try expect(selection.data[2] == 1);
+  try expect(selection.data[3] == 0);
+  try expect(selection.data[4] == 0);
+  try expect(selection.data[5] == 1);
+  try expect(selection.data[6] == 0);
+  try expect(selection.data[7] == 0);
+  try expect(selection.data[8] == 0);
+
+  deselect_all();
+
+  // bottom-right
+  // 0 0 0
+  // 0 0 1
+  // 0 1 0
+  selection.data[5] = 1;
+  selection.data[7] = 1;
+  dilate(test_allocator);
+
+  // 0 0 0
+  // 0 0 1
+  // 0 1 1
+  try expect(selection.data[0] == 0);
+  try expect(selection.data[1] == 0);
+  try expect(selection.data[2] == 0);
+  try expect(selection.data[3] == 0);
+  try expect(selection.data[4] == 0);
+  try expect(selection.data[5] == 1);
+  try expect(selection.data[6] == 0);
+  try expect(selection.data[7] == 1);
+  try expect(selection.data[8] == 1);
+
+  deselect_all();
+
+  // bottom-left
+  // 0 0 0
+  // 1 0 0
+  // 0 1 0
+  selection.data[3] = 1;
+  selection.data[7] = 1;
+  dilate(test_allocator);
+
+  // 0 0 0
+  // 1 0 0
+  // 1 1 0
+  try expect(selection.data[0] == 0);
+  try expect(selection.data[1] == 0);
+  try expect(selection.data[2] == 0);
+  try expect(selection.data[3] == 1);
+  try expect(selection.data[4] == 0);
+  try expect(selection.data[5] == 0);
+  try expect(selection.data[6] == 1);
+  try expect(selection.data[7] == 1);
+  try expect(selection.data[8] == 0);
+
+  deselect_all();
+
+
+  // top-right & top-left
+  // 0 1 0
+  // 0 1 0
+  // 0 0 0
+  selection.data[1] = 1;
+  selection.data[4] = 1;
+  dilate(test_allocator);
+
+  // 1 1 1
+  // 0 1 0
+  // 0 0 0
+  try expect(selection.data[0] == 1);
+  try expect(selection.data[1] == 1);
+  try expect(selection.data[2] == 1);
+  try expect(selection.data[3] == 0);
+  try expect(selection.data[4] == 1);
+  try expect(selection.data[5] == 0);
+  try expect(selection.data[6] == 0);
+  try expect(selection.data[7] == 0);
+  try expect(selection.data[8] == 0);
+
+  deselect_all();
+
+  // top-left & bottom-left
+  // 0 0 0
+  // 0 1 1
+  // 0 0 0
+  selection.data[4] = 1;
+  selection.data[5] = 1;
+  dilate(test_allocator);
+
+  // 0 0 1
+  // 0 1 1
+  // 0 0 1
+  try expect(selection.data[0] == 0);
+  try expect(selection.data[1] == 0);
+  try expect(selection.data[2] == 1);
+  try expect(selection.data[3] == 0);
+  try expect(selection.data[4] == 1);
+  try expect(selection.data[5] == 1);
+  try expect(selection.data[6] == 0);
+  try expect(selection.data[7] == 0);
+  try expect(selection.data[8] == 1);
+
+  deselect_all();
+
+  // bottom-left & bottom-right
+  // 0 0 0
+  // 0 1 0
+  // 0 1 0
+  selection.data[4] = 1;
+  selection.data[7] = 1;
+  dilate(test_allocator);
+
+  // 0 0 0
+  // 0 1 0
+  // 1 1 1
+  try expect(selection.data[0] == 0);
+  try expect(selection.data[1] == 0);
+  try expect(selection.data[2] == 0);
+  try expect(selection.data[3] == 0);
+  try expect(selection.data[4] == 1);
+  try expect(selection.data[5] == 0);
+  try expect(selection.data[6] == 1);
+  try expect(selection.data[7] == 1);
+  try expect(selection.data[8] == 1);
+
+  deselect_all();
+
+  // bottom-right & top-right
+  // 0 0 0
+  // 1 1 0
+  // 0 0 0
+  selection.data[3] = 1;
+  selection.data[4] = 1;
+  dilate(test_allocator);
+
+  // 1 0 0
+  // 1 1 0
+  // 1 0 0
+  try expect(selection.data[0] == 1);
+  try expect(selection.data[1] == 0);
+  try expect(selection.data[2] == 0);
+  try expect(selection.data[3] == 1);
+  try expect(selection.data[4] == 1);
+  try expect(selection.data[5] == 0);
+  try expect(selection.data[6] == 1);
   try expect(selection.data[7] == 0);
   try expect(selection.data[8] == 0);
 }
